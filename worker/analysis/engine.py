@@ -296,7 +296,7 @@ class AnalysisEngine:
         all_findings = []
         
         # Get universal scanners (gitleaks, semgrep, trivy)
-        universal_scanners = get_universal_scanners()
+        universal_scanners = get_universal_scanners(self.repo_path)
         
         # Run universal scanners on whole repo
         scanner_count = len(universal_scanners)
@@ -334,7 +334,7 @@ class AnalysisEngine:
                     all_findings.append(finding)
                 
                 db.update_scanner_result(result_id, "completed", len(findings))
-                self.status.log_step(f"{scanner_name}: {len(findings)} findings")
+                self.status.log_step( f"{scanner_name}: {len(findings)} findings")
                 
             except Exception as e:
                 self.logger.warning(f"Scanner {scanner_name} failed: {e}")
@@ -343,7 +343,7 @@ class AnalysisEngine:
         # Run language-specific scanners per component
         for comp_idx, comp in enumerate(components):
             language = comp.get("language", "unknown")
-            scanners = get_scanner_for_language(language)
+            scanners = get_scanner_for_language(language, self.repo_path)
             
             if not scanners:
                 continue

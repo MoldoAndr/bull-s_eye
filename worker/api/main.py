@@ -16,7 +16,7 @@ import json
 
 from config import settings, get_available_models
 from database import db
-from analysis.engine import run_analysis
+from worker import analyze_repository
 
 # Configure logging
 structlog.configure(
@@ -189,8 +189,8 @@ async def create_job(job_data: JobCreate, background_tasks: BackgroundTasks):
         model=job_data.model
     )
     
-    # Start analysis in background
-    background_tasks.add_task(run_analysis, job_id, job_data.model)
+    # Start analysis via Celery
+    analyze_repository.delay(job_id, job_data.model)
     
     # Return job status
     job = db.get_job(job_id)
@@ -408,7 +408,7 @@ async def webhook_analyze(
         name=name,
     )
     
-    background_tasks.add_task(run_analysis, job_id, model)
+    analyze_repository.delay(job_id, model)
     
     return {
         "status": "queued",
@@ -489,5 +489,5 @@ if __name__ == "__main__":
         "api.main:app",
         host=settings.api_host,
         port=settings.api_port,
-        reload=True,
+        reload=False,
     )

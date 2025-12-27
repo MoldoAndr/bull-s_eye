@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   # Redis for Job Queue
   redis:
@@ -52,9 +50,9 @@ services:
     container_name: bullseye_worker
     environment:
       - REDIS_URL=redis://redis:6379/0
-      - OLLAMA_API_KEY=${OLLAMA_API_KEY}
-      - OLLAMA_MODEL=${OLLAMA_MODEL:-deepseek-r1:70b}
-      - OLLAMA_MODELS=${OLLAMA_MODELS}
+      - OLLAMA_API_KEY=${OLLAMA_API_KEY:-}
+      - OLLAMA_MODEL=${OLLAMA_MODEL:-deepseek-v3.1:671b-cloud}
+      - OLLAMA_MODELS=${OLLAMA_MODELS:-gpt-oss:120b-cloud,deepseek-v3.1:671b-cloud,qwen3-next:80b-cloud}
       - WORKER_CONCURRENCY=2
       - LOG_LEVEL=INFO
     volumes:
@@ -79,9 +77,9 @@ services:
     container_name: bullseye_worker_api
     environment:
       - REDIS_URL=redis://redis:6379/0
-      - OLLAMA_API_KEY=${OLLAMA_API_KEY}
-      - OLLAMA_MODEL=${OLLAMA_MODEL:-deepseek-r1:70b}
-      - OLLAMA_MODELS=${OLLAMA_MODELS}
+      - OLLAMA_API_KEY=${OLLAMA_API_KEY:-}
+      - OLLAMA_MODEL=${OLLAMA_MODEL:-deepseek-v3.1:671b-cloud}
+      - OLLAMA_MODELS=${OLLAMA_MODELS:-gpt-oss:120b-cloud,deepseek-v3.1:671b-cloud,qwen3-next:80b-cloud}
     ports:
       - "8000:8000"
     volumes:

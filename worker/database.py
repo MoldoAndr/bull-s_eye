@@ -490,9 +490,9 @@ class Database:
             row = conn.execute("""
                 SELECT 
                     COUNT(*) as total,
-                    SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed,
-                    SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) as failed,
-                    SUM(CASE WHEN status IN ('pending', 'cloning', 'scanning', 'analyzing') THEN 1 ELSE 0 END) as running
+                    COALESCE(SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END), 0) as completed,
+                    COALESCE(SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END), 0) as failed,
+                    COALESCE(SUM(CASE WHEN status IN ('pending', 'cloning', 'scanning', 'analyzing') THEN 1 ELSE 0 END), 0) as running
                 FROM jobs
             """).fetchone()
             stats['jobs'] = dict(row)
@@ -501,10 +501,10 @@ class Database:
             row = conn.execute("""
                 SELECT 
                     COUNT(*) as total,
-                    SUM(CASE WHEN severity = 'critical' THEN 1 ELSE 0 END) as critical,
-                    SUM(CASE WHEN severity = 'high' THEN 1 ELSE 0 END) as high,
-                    SUM(CASE WHEN severity = 'medium' THEN 1 ELSE 0 END) as medium,
-                    SUM(CASE WHEN severity = 'low' THEN 1 ELSE 0 END) as low
+                    COALESCE(SUM(CASE WHEN severity = 'critical' THEN 1 ELSE 0 END), 0) as critical,
+                    COALESCE(SUM(CASE WHEN severity = 'high' THEN 1 ELSE 0 END), 0) as high,
+                    COALESCE(SUM(CASE WHEN severity = 'medium' THEN 1 ELSE 0 END), 0) as medium,
+                    COALESCE(SUM(CASE WHEN severity = 'low' THEN 1 ELSE 0 END), 0) as low
                 FROM findings
             """).fetchone()
             stats['findings'] = dict(row)

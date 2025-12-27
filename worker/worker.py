@@ -3,6 +3,7 @@ Bull's Eye - Celery Worker Configuration
 """
 
 import asyncio
+from typing import Optional
 from celery import Celery
 import structlog
 
@@ -50,25 +51,21 @@ celery_app.conf.update(
 
 
 @celery_app.task(bind=True, name="analyze_repository")
-def analyze_repository(self, job_id: str):
+def analyze_repository(self, job_id: str, model: Optional[str] = None):
     """Celery task to run repository analysis."""
-    from database import DatabaseManager
     from analysis.engine import AnalysisEngine
     
     logger.info("Starting analysis task", job_id=job_id, task_id=self.request.id)
     
-    # Get database manager
-    db = DatabaseManager()
-    
     try:
         # Create engine and run analysis
-        engine = AnalysisEngine(db)
+        engine = AnalysisEngine(job_id, model)
         
         # Run async analysis in sync context
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
         try:
-            result = loop.run_until_complete(engine.run_analysis(job_id))
+            result = loop.run_until_complete(engine.run())
         finally:
             loop.close()
         
@@ -78,8 +75,6 @@ def analyze_repository(self, job_id: str):
     except Exception as e:
         logger.error("Analysis task failed", job_id=job_id, error=str(e))
         raise
-    finally:
-        db.close()
 
 
 @celery_app.task(name="health_check")

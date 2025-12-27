@@ -12,6 +12,7 @@ import subprocess
 import json
 import time
 import structlog
+import asyncio
 
 logger = structlog.get_logger()
 
@@ -105,6 +106,25 @@ class BaseScanner(ABC):
         self.repo_path = repo_path
         self.logger = structlog.get_logger().bind(scanner=self.name)
     
+    def get_tool_name(self) -> str:
+        """Get the name of the tool."""
+        return self.name
+
+    async def scan(self, target_path: str, job_id: str, component_id: Optional[str] = None) -> List[Dict[str, Any]]:
+        """
+        Run the scanner and return findings as a list of dictionaries.
+        This is a wrapper around run() to match the engine's expectations.
+        """
+        # Run in a thread pool since run() is synchronous
+        loop = asyncio.get_event_loop()
+        result = await loop.run_in_executor(
+            None, 
+            self.run, 
+            Path(target_path) if target_path else None
+        )
+        
+        return [f.to_dict() for f in result.findings]
+
     @abstractmethod
     def is_available(self) -> bool:
         """Check if the scanner is installed and available."""

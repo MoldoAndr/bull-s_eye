@@ -12,29 +12,9 @@ import json
 
 # Available Ollama Cloud Models
 OLLAMA_CLOUD_MODELS = [
-    {"id": "deepseek-r1:70b", "name": "DeepSeek R1 70B", "description": "Best for complex reasoning and analysis"},
-    {"id": "deepseek-r1:32b", "name": "DeepSeek R1 32B", "description": "Fast reasoning model"},
-    {"id": "deepseek-r1:14b", "name": "DeepSeek R1 14B", "description": "Lightweight reasoning model"},
-    {"id": "deepseek-r1:8b", "name": "DeepSeek R1 8B", "description": "Fastest reasoning model"},
-    {"id": "deepseek-r1:1.5b", "name": "DeepSeek R1 1.5B", "description": "Ultra-light reasoning"},
-    {"id": "deepseek-v3:671b", "name": "DeepSeek V3 671B", "description": "Most powerful model"},
-    {"id": "deepseek-v3.1:671b", "name": "DeepSeek V3.1 671B", "description": "Latest DeepSeek flagship"},
-    {"id": "qwq:32b", "name": "QwQ 32B", "description": "Strong reasoning capabilities"},
-    {"id": "llama3.3:70b", "name": "Llama 3.3 70B", "description": "Meta's latest large model"},
-    {"id": "llama3.2:latest", "name": "Llama 3.2", "description": "Versatile general model"},
-    {"id": "llama3.1:405b", "name": "Llama 3.1 405B", "description": "Largest Llama model"},
-    {"id": "llama3.1:70b", "name": "Llama 3.1 70B", "description": "High-quality large model"},
-    {"id": "gemma2:27b", "name": "Gemma 2 27B", "description": "Google's efficient model"},
-    {"id": "gemma3:27b", "name": "Gemma 3 27B", "description": "Latest Google model"},
-    {"id": "qwen2.5:72b", "name": "Qwen 2.5 72B", "description": "Alibaba's flagship model"},
-    {"id": "qwen2.5-coder:32b", "name": "Qwen 2.5 Coder 32B", "description": "Specialized for code"},
-    {"id": "mistral:7b", "name": "Mistral 7B", "description": "Fast and efficient"},
-    {"id": "mixtral:8x7b", "name": "Mixtral 8x7B", "description": "MoE architecture"},
-    {"id": "mixtral:8x22b", "name": "Mixtral 8x22B", "description": "Large MoE model"},
-    {"id": "command-r:35b", "name": "Command R 35B", "description": "Cohere's RAG model"},
-    {"id": "command-r-plus:104b", "name": "Command R+ 104B", "description": "Cohere's largest model"},
-    {"id": "phi4:14b", "name": "Phi-4 14B", "description": "Microsoft's efficient model"},
-    {"id": "wizardlm2:8x22b", "name": "WizardLM2 8x22B", "description": "Instruction-tuned MoE"},
+    {"id": "gpt-oss:120b-cloud", "name": "GPT-OSS 120B Cloud", "description": "Powerful open-source model for complex analysis"},
+    {"id": "deepseek-v3.1:671b-cloud", "name": "DeepSeek V3.1 671B Cloud", "description": "Latest DeepSeek flagship model for deep reasoning"},
+    {"id": "qwen3-next:80b-cloud", "name": "Qwen3 Next 80B Cloud", "description": "Next-gen Qwen model optimized for code and logic"},
 ]
 
 
@@ -63,7 +43,7 @@ class Settings(BaseSettings):
         description="Ollama Cloud API key (Bearer token)"
     )
     ollama_model: str = Field(
-        default="deepseek-r1:70b",
+        default="deepseek-v3.1:671b-cloud",
         description="Default Ollama model for analysis"
     )
     ollama_models: Optional[str] = Field(
@@ -73,6 +53,10 @@ class Settings(BaseSettings):
     ollama_timeout: int = Field(
         default=300,
         description="Timeout for Ollama API calls in seconds"
+    )
+    analysis_timeout: int = Field(
+        default=3600,
+        description="Maximum time for a full analysis job in seconds"
     )
     
     # Worker settings
