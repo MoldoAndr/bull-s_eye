@@ -1,0 +1,199 @@
+{
+  "name": "Bull's Eye - GitHub Push Trigger",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "github-push",
+        "options": {}
+      },
+      "id": "github-webhook",
+      "name": "GitHub Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.headers['x-github-event'] }}",
+              "value2": "push"
+            }
+          ]
+        }
+      },
+      "id": "is-push-event",
+      "name": "Is Push Event?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [450, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $input.first().json.body;\n\nconst ref = body.ref || '';\nconst branch = ref.replace('refs/heads/', '');\nconst repoUrl = body.repository?.clone_url;\nconst repoName = body.repository?.name;\nconst pusher = body.pusher?.name;\nconst commits = body.commits?.length || 0;\n\n// Only analyze main/master branches or PRs\nconst mainBranches = ['main', 'master', 'develop'];\nconst shouldAnalyze = mainBranches.includes(branch);\n\nreturn {\n  repo_url: repoUrl,\n  branch: branch,\n  name: `GitHub Push: ${repoName} (${branch})`,\n  pusher: pusher,\n  commits: commits,\n  should_analyze: shouldAnalyze\n};"
+      },
+      "id": "extract-data",
+      "name": "Extract Push Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [650, 200]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.should_analyze }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "should-analyze",
+      "name": "Should Analyze?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [850, 200]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://worker-api:8000/webhook/analyze",
+        "options": {},
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "repo_url",
+              "value": "={{ $json.repo_url }}"
+            },
+            {
+              "name": "branch",
+              "value": "={{ $json.branch }}"
+            },
+            {
+              "name": "name",
+              "value": "={{ $json.name }}"
+            }
+          ]
+        }
+      },
+      "id": "trigger-analysis",
+      "name": "Trigger Analysis",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [1050, 100]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: true, job_id: $json.job_id }) }}",
+        "options": {}
+      },
+      "id": "respond-ok",
+      "name": "Respond OK",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1250, 100]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: true, message: 'Branch not configured for analysis' }) }}",
+        "options": {}
+      },
+      "id": "respond-skip",
+      "name": "Respond Skip",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1050, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: true, message: 'Not a push event' }) }}",
+        "options": {}
+      },
+      "id": "respond-not-push",
+      "name": "Respond Not Push",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [650, 400]
+    }
+  ],
+  "connections": {
+    "GitHub Webhook": {
+      "main": [
+        [
+          {
+            "node": "Is Push Event?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Push Event?": {
+      "main": [
+        [
+          {
+            "node": "Extract Push Data",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond Not Push",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Push Data": {
+      "main": [
+        [
+          {
+            "node": "Should Analyze?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Should Analyze?": {
+      "main": [
+        [
+          {
+            "node": "Trigger Analysis",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond Skip",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Trigger Analysis": {
+      "main": [
+        [
+          {
+            "node": "Respond OK",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

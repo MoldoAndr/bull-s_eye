@@ -1,0 +1,122 @@
+version: '3.8'
+
+services:
+  # Redis for Job Queue
+  redis:
+    image: redis:7-alpine
+    container_name: bullseye_redis
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - bullseye_network
+
+  # n8n Workflow Automation
+  n8n:
+    image: n8nio/n8n:latest
+    container_name: bullseye_n8n
+    environment:
+      - N8N_HOST=0.0.0.0
+      - N8N_PORT=5678
+      - N8N_PROTOCOL=http
+      - WEBHOOK_URL=http://localhost:5678/
+      - N8N_BASIC_AUTH_ACTIVE=true
+      - N8N_BASIC_AUTH_USER=admin
+      - N8N_BASIC_AUTH_PASSWORD=bullseye_admin
+      - DB_TYPE=sqlite
+      - EXECUTIONS_DATA_PRUNE=true
+      - EXECUTIONS_DATA_MAX_AGE=168
+    volumes:
+      - n8n_data:/home/node/.n8n
+      - ./n8n/workflows:/home/node/.n8n/workflows
+    ports:
+      - "5678:5678"
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - bullseye_network
+
+  # Analysis Worker (Python with Celery)
+  worker:
+    build:
+      context: ./worker
+      dockerfile: Dockerfile
+    container_name: bullseye_worker
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+      - OLLAMA_API_KEY=${OLLAMA_API_KEY}
+      - OLLAMA_MODEL=${OLLAMA_MODEL:-deepseek-r1:70b}
+      - OLLAMA_MODELS=${OLLAMA_MODELS}
+      - WORKER_CONCURRENCY=2
+      - LOG_LEVEL=INFO
+    volumes:
+      - ./worker:/app
+      - bullseye_data:/app/data
+      - worker_repos:/app/repos
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - bullseye_network
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+
+  # Analysis Worker API (FastAPI)
+  worker-api:
+    build:
+      context: ./worker
+      dockerfile: Dockerfile.api
+    container_name: bullseye_worker_api
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+      - OLLAMA_API_KEY=${OLLAMA_API_KEY}
+      - OLLAMA_MODEL=${OLLAMA_MODEL:-deepseek-r1:70b}
+      - OLLAMA_MODELS=${OLLAMA_MODELS}
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./worker:/app
+      - bullseye_data:/app/data
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - bullseye_network
+
+  # Web UI (Next.js)
+  web:
+    build:
+      context: ./web
+      dockerfile: Dockerfile
+      args:
+        INTERNAL_API_URL: http://worker-api:8000
+    container_name: bullseye_web
+    environment:
+      - INTERNAL_API_URL=http://worker-api:8000
+      - NEXT_PUBLIC_N8N_WEBHOOK_URL=http://localhost:5678/webhook
+    ports:
+      - "3000:3000"
+    depends_on:
+      - worker-api
+    networks:
+      - bullseye_network
+
+volumes:
+  redis_data:
+  n8n_data:
+  worker_repos:
+  bullseye_data:
+
+networks:
+  bullseye_network:
+    driver: bridge

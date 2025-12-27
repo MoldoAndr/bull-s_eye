@@ -1,0 +1,238 @@
+{
+  "name": "Bull's Eye - Analysis Complete Notification",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "analysis-complete",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook",
+      "name": "Analysis Complete Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $input.first();\nconst body = input.json.body;\n\n// Extract job data\nconst job = {\n  id: body.job_id,\n  name: body.name || 'Unknown Job',\n  status: body.status,\n  repo_url: body.repo_url,\n  branch: body.branch,\n  started_at: body.started_at,\n  completed_at: body.completed_at,\n  stats: body.stats || {}\n};\n\n// Calculate summary\nconst findings = job.stats.findings || {};\nconst summary = {\n  critical: findings.critical || 0,\n  high: findings.high || 0,\n  medium: findings.medium || 0,\n  low: findings.low || 0,\n  info: findings.info || 0,\n  total: (findings.critical || 0) + (findings.high || 0) + (findings.medium || 0) + (findings.low || 0) + (findings.info || 0)\n};\n\nconst duration = job.completed_at && job.started_at \n  ? Math.round((new Date(job.completed_at) - new Date(job.started_at)) / 1000)\n  : 'N/A';\n\nreturn [{\n  json: {\n    job,\n    summary,\n    duration,\n    has_critical: summary.critical > 0,\n    has_high: summary.high > 0,\n    needs_attention: summary.critical > 0 || summary.high > 0\n  }\n}];"
+      },
+      "id": "process-data",
+      "name": "Process Job Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [450, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.job.status }}",
+              "value2": "completed"
+            }
+          ]
+        }
+      },
+      "id": "if-completed",
+      "name": "If Completed",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [650, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.needs_attention }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "if-needs-attention",
+      "name": "Needs Attention?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [850, 200]
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "channel": "#security-alerts",
+        "text": "🚨 *Critical Security Findings Detected*\n\n*Job:* {{ $json.job.name }}\n*Repository:* {{ $json.job.repo_url }}\n*Branch:* {{ $json.job.branch }}\n\n*Findings Summary:*\n• 🔴 Critical: {{ $json.summary.critical }}\n• 🟠 High: {{ $json.summary.high }}\n• 🟡 Medium: {{ $json.summary.medium }}\n• 🔵 Low: {{ $json.summary.low }}\n\n*Duration:* {{ $json.duration }} seconds\n\n<{{ $env.WEB_URL }}/jobs/{{ $json.job.id }}|View Full Report>",
+        "otherOptions": {}
+      },
+      "id": "slack-urgent",
+      "name": "Slack - Urgent Alert",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.1,
+      "position": [1050, 100],
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "channel": "#security-reports",
+        "text": "✅ *Analysis Complete*\n\n*Job:* {{ $json.job.name }}\n*Repository:* {{ $json.job.repo_url }}\n*Branch:* {{ $json.job.branch }}\n\n*Findings Summary:*\n• 🟡 Medium: {{ $json.summary.medium }}\n• 🔵 Low: {{ $json.summary.low }}\n• ℹ️ Info: {{ $json.summary.info }}\n\n*Duration:* {{ $json.duration }} seconds\n\n<{{ $env.WEB_URL }}/jobs/{{ $json.job.id }}|View Report>",
+        "otherOptions": {}
+      },
+      "id": "slack-normal",
+      "name": "Slack - Normal Report",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.1,
+      "position": [1050, 300],
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "fromEmail": "bulls-eye@your-domain.com",
+        "toEmail": "security-team@your-domain.com",
+        "subject": "🚨 [Bull's Eye] Critical Findings: {{ $json.job.name }}",
+        "emailType": "html",
+        "message": "<h2>Critical Security Findings Detected</h2>\n<p><strong>Job:</strong> {{ $json.job.name }}</p>\n<p><strong>Repository:</strong> {{ $json.job.repo_url }}</p>\n<p><strong>Branch:</strong> {{ $json.job.branch }}</p>\n\n<h3>Findings Summary</h3>\n<ul>\n<li>🔴 Critical: {{ $json.summary.critical }}</li>\n<li>🟠 High: {{ $json.summary.high }}</li>\n<li>🟡 Medium: {{ $json.summary.medium }}</li>\n<li>🔵 Low: {{ $json.summary.low }}</li>\n</ul>\n\n<p><a href=\"{{ $env.WEB_URL }}/jobs/{{ $json.job.id }}\">View Full Report</a></p>",
+        "options": {}
+      },
+      "id": "email-urgent",
+      "name": "Email - Urgent Alert",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [1050, 0],
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{\n  json: {\n    status: 'failed',\n    job: $input.first().json.job,\n    message: 'Analysis failed'\n  }\n}];"
+      },
+      "id": "handle-failure",
+      "name": "Handle Failure",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [850, 400]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "respond-webhook",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1250, 300]
+    }
+  ],
+  "connections": {
+    "Analysis Complete Webhook": {
+      "main": [
+        [
+          {
+            "node": "Process Job Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Job Data": {
+      "main": [
+        [
+          {
+            "node": "If Completed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If Completed": {
+      "main": [
+        [
+          {
+            "node": "Needs Attention?",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Handle Failure",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Needs Attention?": {
+      "main": [
+        [
+          {
+            "node": "Slack - Urgent Alert",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Email - Urgent Alert",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Slack - Normal Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Slack - Urgent Alert": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Email - Urgent Alert": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Slack - Normal Report": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Handle Failure": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}
