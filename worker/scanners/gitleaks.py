@@ -52,6 +52,14 @@ class GitleaksScanner(BaseScanner):
             
             for item in data:
                 severity = self._map_severity(item.get("Rule", {}).get("Entropy", 0))
+
+                # Avoid persisting secrets; keep only minimal, non-sensitive context.
+                redacted_item = dict(item)
+                for k in ("Secret", "Match", "Line"):
+                    if k in redacted_item:
+                        redacted_item[k] = "***"
+                if "Tags" in redacted_item and isinstance(redacted_item["Tags"], list):
+                    redacted_item["Tags"] = redacted_item["Tags"][:10]
                 
                 finding = ScannerFinding(
                     title=f"Secret detected: {item.get('Description', 'Unknown secret')}",
@@ -64,12 +72,12 @@ class GitleaksScanner(BaseScanner):
                     line_end=item.get("EndLine"),
                     column_start=item.get("StartColumn"),
                     column_end=item.get("EndColumn"),
-                    code_snippet=item.get("Secret", "")[:100] + "..." if len(item.get("Secret", "")) > 100 else item.get("Secret", ""),
+                    code_snippet="***",
                     source=self.name,
                     rule_id=item.get("RuleID"),
                     rule_name=item.get("Description"),
                     references=["https://github.com/gitleaks/gitleaks"],
-                    raw_output=item,
+                    raw_output=redacted_item,
                 )
                 findings.append(finding)
         except json.JSONDecodeError as e:

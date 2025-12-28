@@ -66,18 +66,18 @@ export function StatsCards({ stats, loading }: StatsCardsProps) {
       {cards.map((card) => (
         <div
           key={card.title}
-          className="bg-card border border-border rounded-lg p-4"
+          className="cyber-card rounded-lg p-4"
         >
           <div className="flex items-center gap-3">
-            <div className={`p-2 rounded-lg ${card.bgColor}`}>
+            <div className={`p-2 rounded-lg ${card.bgColor} border border-primary/20`}>
               <card.icon className={`h-5 w-5 ${card.color}`} />
             </div>
             <div>
-              <p className="text-sm text-muted-foreground">{card.title}</p>
+              <p className="text-[10px] uppercase tracking-wider text-muted-foreground">{card.title}</p>
               {loading ? (
                 <div className="h-7 w-12 bg-muted animate-pulse rounded" />
               ) : (
-                <p className="text-2xl font-bold">{card.value}</p>
+                <p className="text-2xl font-bold font-mono">{card.value}</p>
               )}
             </div>
           </div>

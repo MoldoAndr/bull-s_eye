@@ -19,7 +19,9 @@ export function NewJobDialog({
   const [name, setName] = useState("");
   const [repoUrl, setRepoUrl] = useState("");
   const [branch, setBranch] = useState("main");
-  const [selectedModel, setSelectedModel] = useState("deepseek-r1:70b");
+  const [selectedModel, setSelectedModel] = useState("");
+  const [customModel, setCustomModel] = useState("");
+  const [isCustomModel, setIsCustomModel] = useState(false);
   const [showModelDropdown, setShowModelDropdown] = useState(false);
   const [apiKey, setApiKey] = useState("");
 
@@ -28,6 +30,13 @@ export function NewJobDialog({
     queryKey: ["models"],
     queryFn: api.getModels,
   });
+
+  // Set default model when models are loaded
+  useEffect(() => {
+    if (models.length > 0 && !selectedModel) {
+      setSelectedModel(models[0].id);
+    }
+  }, [models, selectedModel]);
 
   const createMutation = useMutation({
     mutationFn: (data: CreateJobRequest) => api.createJob(data),
@@ -50,7 +59,7 @@ export function NewJobDialog({
       repo_url: repoUrl,
       branch: branch,
       name: name || `Analysis of ${repoName}`,
-      model: selectedModel,
+      model: isCustomModel ? customModel : selectedModel,
       ...(trimmedApiKey ? { ollama_api_key: trimmedApiKey } : {}),
     };
 
@@ -70,31 +79,31 @@ export function NewJobDialog({
       />
 
       {/* Dialog */}
-      <div className="relative bg-card border border-border rounded-xl shadow-2xl w-full max-w-lg mx-4 overflow-hidden">
+      <div className="relative cyber-card rounded-none shadow-2xl w-full max-w-lg mx-4 overflow-hidden">
         {/* Header */}
-        <div className="flex items-center justify-between p-5 border-b border-border bg-gradient-to-r from-primary/5 to-transparent">
+        <div className="flex items-center justify-between p-5 border-b border-primary/30 bg-black/60">
           <div className="flex items-center gap-2">
-            <div className="p-2 rounded-lg bg-primary/10">
+            <div className="p-2 rounded-none bg-primary/20 border border-primary/50">
               <Sparkles className="h-5 w-5 text-primary" />
             </div>
             <div>
-              <h2 className="text-lg font-semibold">New Analysis</h2>
-              <p className="text-xs text-muted-foreground">Configure your codebase scan</p>
+              <h2 className="text-lg font-bold uppercase tracking-tighter italic">New Analysis</h2>
+              <p className="text-[10px] text-primary/70 uppercase tracking-widest font-mono">Configure your codebase scan</p>
             </div>
           </div>
           <button
             onClick={() => onOpenChange(false)}
-            className="p-2 hover:bg-accent rounded-lg transition-colors"
+            className="p-2 hover:bg-primary/10 rounded-none transition-colors text-primary"
           >
             <X className="h-5 w-5" />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-5 space-y-5">
+        <form onSubmit={handleSubmit} className="p-5 space-y-5 bg-black/40">
           {/* Repository URL */}
           <div>
-            <label className="block text-sm font-medium mb-2">
-              Repository URL <span className="text-destructive">*</span>
+            <label className="block text-[10px] uppercase tracking-widest font-bold mb-2 text-primary/80">
+              Repository URL <span className="text-red-500">*</span>
             </label>
             <input
               type="url"
@@ -102,75 +111,108 @@ export function NewJobDialog({
               onChange={(e) => setRepoUrl(e.target.value)}
               placeholder="https://github.com/user/repo.git"
               required
-              className="w-full px-4 py-3 bg-background border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all"
+              className="w-full px-4 py-3 bg-black/60 border border-primary/30 rounded-none focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-all font-mono text-sm"
             />
           </div>
 
           {/* Branch */}
           <div>
-            <label className="block text-sm font-medium mb-2">Branch</label>
+            <label className="block text-[10px] uppercase tracking-widest font-bold mb-2 text-primary/80">Branch</label>
             <input
               type="text"
               value={branch}
               onChange={(e) => setBranch(e.target.value)}
               placeholder="main"
-              className="w-full px-4 py-3 bg-background border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all"
+              className="w-full px-4 py-3 bg-black/60 border border-primary/30 rounded-none focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-all font-mono text-sm"
             />
           </div>
 
           {/* Analysis Name */}
           <div>
-            <label className="block text-sm font-medium mb-2">
-              Analysis Name <span className="text-muted-foreground">(optional)</span>
+            <label className="block text-[10px] uppercase tracking-widest font-bold mb-2 text-primary/80">
+              Analysis Name <span className="text-muted-foreground lowercase font-normal">(optional)</span>
             </label>
             <input
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="Auto-generated from repo name"
-              className="w-full px-4 py-3 bg-background border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all"
+              className="w-full px-4 py-3 bg-black/60 border border-primary/30 rounded-none focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-all font-mono text-sm"
             />
           </div>
 
           {/* Model Selection */}
           <div>
-            <label className="block text-sm font-medium mb-2">
-              AI Model <span className="text-destructive">*</span>
+            <label className="block text-[10px] uppercase tracking-widest font-bold mb-2 text-primary/80">
+              AI Model <span className="text-red-500">*</span>
             </label>
             <div className="relative">
-              <button
-                type="button"
-                onClick={() => setShowModelDropdown(!showModelDropdown)}
-                className="w-full px-4 py-3 bg-background border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all text-left flex items-center justify-between"
-              >
-                <div>
-                  <div className="font-medium">{selectedModelInfo?.name || selectedModel}</div>
-                  <div className="text-xs text-muted-foreground">
-                    {selectedModelInfo?.description || "Select a model"}
+              {!isCustomModel ? (
+                <button
+                  type="button"
+                  onClick={() => setShowModelDropdown(!showModelDropdown)}
+                  className="w-full px-4 py-3 bg-black/60 border border-primary/30 rounded-none focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-all text-left flex items-center justify-between"
+                >
+                  <div>
+                    <div className="font-bold font-mono text-sm text-primary">{selectedModelInfo?.name || selectedModel || "Select a model"}</div>
+                    <div className="text-[10px] text-muted-foreground uppercase tracking-tighter">
+                      {selectedModelInfo?.description || "Choose from available models"}
+                    </div>
                   </div>
+                  <ChevronDown className={`h-5 w-5 text-primary transition-transform ${showModelDropdown ? 'rotate-180' : ''}`} />
+                </button>
+              ) : (
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={customModel}
+                    onChange={(e) => setCustomModel(e.target.value)}
+                    placeholder="Enter model name (e.g. llama3:70b)"
+                    className="flex-1 px-4 py-3 bg-black/60 border border-primary/30 rounded-none focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-all font-mono text-sm"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setIsCustomModel(false)}
+                    className="px-3 border border-primary/30 hover:bg-primary/10 text-[10px] uppercase font-bold"
+                  >
+                    List
+                  </button>
                 </div>
-                <ChevronDown className={`h-5 w-5 text-muted-foreground transition-transform ${showModelDropdown ? 'rotate-180' : ''}`} />
-              </button>
+              )}
 
               {/* Dropdown */}
-              {showModelDropdown && (
-                <div className="absolute z-10 w-full mt-2 bg-popover border border-border rounded-lg shadow-lg max-h-64 overflow-y-auto">
-                  {models.map((model) => (
-                    <button
-                      key={model.id}
-                      type="button"
-                      onClick={() => {
-                        setSelectedModel(model.id);
-                        setShowModelDropdown(false);
-                      }}
-                      className={`w-full px-4 py-3 text-left hover:bg-accent transition-colors ${
-                        selectedModel === model.id ? "bg-primary/10 border-l-2 border-primary" : ""
-                      }`}
-                    >
-                      <div className="font-medium">{model.name}</div>
-                      <div className="text-xs text-muted-foreground">{model.description}</div>
-                    </button>
-                  ))}
+              {showModelDropdown && !isCustomModel && (
+                <div className="absolute z-20 w-full mt-1 bg-black border border-primary/50 rounded-none shadow-[0_0_20px_rgba(4,6,89,0.8)] max-h-64 overflow-y-auto">
+                  {models.length > 0 ? (
+                    models.map((model) => (
+                      <button
+                        key={model.id}
+                        type="button"
+                        onClick={() => {
+                          setSelectedModel(model.id);
+                          setShowModelDropdown(false);
+                        }}
+                        className={`w-full px-4 py-3 text-left hover:bg-primary/20 transition-colors border-b border-primary/10 last:border-0 ${
+                          selectedModel === model.id ? "bg-primary/10 border-l-2 border-primary" : ""
+                        }`}
+                      >
+                        <div className="font-bold font-mono text-sm">{model.name}</div>
+                        <div className="text-[10px] text-muted-foreground uppercase tracking-tighter">{model.description}</div>
+                      </button>
+                    ))
+                  ) : (
+                    <div className="px-4 py-3 text-[10px] text-muted-foreground uppercase italic">No models found</div>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsCustomModel(true);
+                      setShowModelDropdown(false);
+                    }}
+                    className="w-full px-4 py-3 text-left hover:bg-primary/20 transition-colors text-primary font-bold font-mono text-xs border-t border-primary/30"
+                  >
+                    + ENTER CUSTOM MODEL NAME
+                  </button>
                 </div>
               )}
             </div>
@@ -178,8 +220,8 @@ export function NewJobDialog({
 
           {/* API Key */}
           <div>
-            <label className="block text-sm font-medium mb-2">
-              Ollama API Key <span className="text-muted-foreground">(optional)</span>
+            <label className="block text-[10px] uppercase tracking-widest font-bold mb-2 text-primary/80">
+              Ollama API Key <span className="text-muted-foreground lowercase font-normal">(optional)</span>
             </label>
             <input
               type="password"
@@ -187,14 +229,14 @@ export function NewJobDialog({
               onChange={(e) => setApiKey(e.target.value)}
               placeholder="sk-..."
               autoComplete="off"
-              className="w-full px-4 py-3 bg-background border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all"
+              className="w-full px-4 py-3 bg-black/60 border border-primary/30 rounded-none focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-all font-mono text-sm"
             />
           </div>
 
           {/* Error Message */}
           {createMutation.isError && (
-            <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-lg text-sm text-destructive">
-              {createMutation.error instanceof Error
+            <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-none text-[10px] uppercase font-bold text-red-500 font-mono">
+              &gt; ERROR: {createMutation.error instanceof Error
                 ? createMutation.error.message
                 : "Failed to create analysis job"}
             </div>
@@ -205,19 +247,19 @@ export function NewJobDialog({
             <button
               type="button"
               onClick={() => onOpenChange(false)}
-              className="flex-1 px-4 py-3 border border-border rounded-lg hover:bg-accent transition-colors font-medium"
+              className="flex-1 px-4 py-3 border border-primary/30 rounded-none hover:bg-primary/10 transition-colors font-bold uppercase text-xs tracking-widest"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={createMutation.isPending || !repoUrl}
-              className="flex-1 px-4 py-3 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              className="cyber-button flex-1 px-4 py-3 bg-primary text-primary-foreground font-bold uppercase text-xs tracking-widest disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
               {createMutation.isPending ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  Starting...
+                  Initializing...
                 </>
               ) : (
                 <>

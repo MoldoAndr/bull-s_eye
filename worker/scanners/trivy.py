@@ -41,6 +41,11 @@ class TrivyScanner(BaseScanner):
     
     def parse_output(self, stdout: str, stderr: str, exit_code: int) -> List[ScannerFinding]:
         findings = []
+
+        # Trivy may use non-zero exit codes for errors; surface them to the caller.
+        if exit_code not in (0, 1) and not stdout.strip():
+            self.logger.error("Trivy execution failed", exit_code=exit_code, stderr=(stderr or "")[:500])
+            return findings
         
         if not stdout.strip():
             return findings

@@ -61,6 +61,15 @@
       "parameters": {
         "method": "POST",
         "url": "http://worker-api:8000/webhook/analyze",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-API-Key",
+              "value": "={{ $env.BULLSEYE_API_KEY }}"
+            }
+          ]
+        },
         "options": {},
         "bodyParameters": {
           "parameters": [

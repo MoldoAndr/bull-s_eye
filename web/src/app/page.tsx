@@ -36,16 +36,16 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="border-b border-border bg-card">
+      <header className="border-b border-primary/30 bg-black/40 backdrop-blur-md sticky top-0 z-10">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-primary rounded-lg">
-                <Target className="h-6 w-6 text-primary-foreground" />
+              <div className="p-2 bg-primary/20 border border-primary/50 rounded-lg shadow-[0_0_10px_rgba(4,6,89,0.5)]">
+                <Target className="h-6 w-6 text-primary" />
               </div>
               <div>
-                <h1 className="text-xl font-bold">Bull's Eye</h1>
-                <p className="text-sm text-muted-foreground">
+                <h1 className="text-xl font-bold tracking-tighter uppercase italic">Bull&apos;s Eye</h1>
+                <p className="text-[10px] text-primary/70 uppercase tracking-[0.2em] font-mono">
                   Autonomous Codebase Analysis
                 </p>
               </div>
@@ -53,14 +53,14 @@ export default function Home() {
             <div className="flex items-center gap-3">
               <button
                 onClick={() => refetchJobs()}
-                className="p-2 hover:bg-accent rounded-lg transition-colors"
+                className="p-2 hover:bg-primary/10 rounded-lg transition-colors text-primary"
                 title="Refresh"
               >
                 <RefreshCw className="h-5 w-5" />
               </button>
               <button
                 onClick={() => setIsNewJobOpen(true)}
-                className="flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-lg hover:bg-primary/90 transition-colors"
+                className="cyber-button flex items-center gap-2 bg-primary text-primary-foreground px-6 py-2 font-bold uppercase text-sm"
               >
                 <Plus className="h-4 w-4" />
                 New Analysis

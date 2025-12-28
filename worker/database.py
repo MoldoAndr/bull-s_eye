@@ -35,6 +35,15 @@ class Database:
         if schema_path:
             with self.get_connection() as conn:
                 conn.executescript(schema_path.read_text())
+        
+        # Migration: Add celery_task_id to jobs if it doesn't exist
+        try:
+            with self.get_connection() as conn:
+                conn.execute("ALTER TABLE jobs ADD COLUMN celery_task_id TEXT")
+                print("Added celery_task_id column to jobs table")
+        except sqlite3.OperationalError as e:
+            if "duplicate column name" not in str(e).lower():
+                print(f"Migration error: {e}")
     
     @contextmanager
     def get_connection(self):
@@ -132,38 +141,40 @@ class Database:
         error: Optional[str] = None
     ):
         """Update job status with detailed progress."""
-        updates = ["status = ?", "status_message = ?"]
-        params = [status, message]
-        
-        if progress is not None:
-            updates.append("progress = ?")
-            params.append(progress)
-        
-        if progress_total is not None:
-            updates.append("progress_total = ?")
-            params.append(progress_total)
-        
-        if progress_detail is not None:
-            updates.append("progress_detail = ?")
-            params.append(progress_detail)
-        
-        if error:
-            updates.append("error_message = ?")
-            params.append(error)
-        
+        started_at = None
+        completed_at = None
         if status == "cloning":
-            updates.append("started_at = ?")
-            params.append(datetime.utcnow().isoformat())
+            started_at = datetime.utcnow().isoformat()
         elif status in ("completed", "failed"):
-            updates.append("completed_at = ?")
-            params.append(datetime.utcnow().isoformat())
-        
-        params.append(job_id)
-        
+            completed_at = datetime.utcnow().isoformat()
+
         with self.get_connection() as conn:
-            conn.execute(f"""
-                UPDATE jobs SET {', '.join(updates)} WHERE id = ?
-            """, params)
+            conn.execute(
+                """
+                UPDATE jobs
+                SET
+                    status = ?,
+                    status_message = ?,
+                    progress = COALESCE(?, progress),
+                    progress_total = COALESCE(?, progress_total),
+                    progress_detail = COALESCE(?, progress_detail),
+                    error_message = COALESCE(?, error_message),
+                    started_at = COALESCE(?, started_at),
+                    completed_at = COALESCE(?, completed_at)
+                WHERE id = ?
+                """,
+                (
+                    status,
+                    message,
+                    progress,
+                    progress_total,
+                    progress_detail,
+                    error,
+                    started_at,
+                    completed_at,
+                    job_id,
+                ),
+            )
         
         # Add status update entry
         self.add_status_update(job_id, status, message or status, progress, progress_detail)
@@ -174,6 +185,14 @@ class Database:
             conn.execute(
                 "UPDATE jobs SET commit_hash = ? WHERE id = ?",
                 (commit_hash, job_id)
+            )
+
+    def set_job_task_id(self, job_id: str, task_id: str):
+        """Set the Celery task ID for a job."""
+        with self.get_connection() as conn:
+            conn.execute(
+                "UPDATE jobs SET celery_task_id = ? WHERE id = ?",
+                (task_id, job_id)
             )
 
     # ==================== STATUS UPDATES ====================
@@ -244,31 +263,20 @@ class Database:
         health_score: Optional[int] = None
     ):
         """Update component details."""
-        updates = []
-        params = []
-        
-        if status:
-            updates.append("status = ?")
-            params.append(status)
-        if file_count is not None:
-            updates.append("file_count = ?")
-            params.append(file_count)
-        if line_count is not None:
-            updates.append("line_count = ?")
-            params.append(line_count)
-        if analysis_summary:
-            updates.append("analysis_summary = ?")
-            params.append(analysis_summary)
-        if health_score is not None:
-            updates.append("health_score = ?")
-            params.append(health_score)
-        
-        if updates:
-            params.append(component_id)
-            with self.get_connection() as conn:
-                conn.execute(f"""
-                    UPDATE components SET {', '.join(updates)} WHERE id = ?
-                """, params)
+        with self.get_connection() as conn:
+            conn.execute(
+                """
+                UPDATE components
+                SET
+                    status = COALESCE(?, status),
+                    file_count = COALESCE(?, file_count),
+                    line_count = COALESCE(?, line_count),
+                    analysis_summary = COALESCE(?, analysis_summary),
+                    health_score = COALESCE(?, health_score)
+                WHERE id = ?
+                """,
+                (status, file_count, line_count, analysis_summary, health_score, component_id),
+            )
 
     # ==================== FILE OPERATIONS ====================
     
@@ -308,22 +316,17 @@ class Database:
         analysis_summary: Optional[str] = None
     ):
         """Update file analysis status."""
-        updates = []
-        params = []
-        
-        if status:
-            updates.append("status = ?")
-            params.append(status)
-        if analysis_summary:
-            updates.append("analysis_summary = ?")
-            params.append(analysis_summary)
-        
-        if updates:
-            params.append(file_id)
-            with self.get_connection() as conn:
-                conn.execute(f"""
-                    UPDATE files SET {', '.join(updates)} WHERE id = ?
-                """, params)
+        with self.get_connection() as conn:
+            conn.execute(
+                """
+                UPDATE files
+                SET
+                    status = COALESCE(?, status),
+                    analysis_summary = COALESCE(?, analysis_summary)
+                WHERE id = ?
+                """,
+                (status, analysis_summary, file_id),
+            )
 
     # ==================== FINDING OPERATIONS ====================
     

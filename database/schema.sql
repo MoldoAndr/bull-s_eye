@@ -14,6 +14,7 @@ CREATE TABLE IF NOT EXISTS jobs (
     progress_total INTEGER DEFAULT 100,
     progress_detail TEXT,
     model TEXT NOT NULL,
+    celery_task_id TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     started_at TIMESTAMP,
     completed_at TIMESTAMP,

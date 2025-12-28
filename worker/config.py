@@ -54,10 +54,6 @@ class Settings(BaseSettings):
         default=300,
         description="Timeout for Ollama API calls in seconds"
     )
-    analysis_timeout: int = Field(
-        default=3600,
-        description="Maximum time for a full analysis job in seconds"
-    )
     
     # Worker settings
     worker_concurrency: int = Field(
@@ -125,9 +121,9 @@ class Settings(BaseSettings):
     api_workers: int = Field(default=4)
     
     # Security
-    api_key: Optional[str] = Field(
-        default=None,
-        description="Optional API key for authentication"
+    api_key: str = Field(
+        ...,
+        description="API key required for authenticating requests to the Bull's Eye API"
     )
     
     class Config:

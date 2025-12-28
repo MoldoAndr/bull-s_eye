@@ -1,0 +1,2354 @@
+{
+  "generated_at": "2025-12-28T10:06:36.766084",
+  "job": {
+    "id": "886e07d4-4940-4612-98a2-6166fb908c9e",
+    "name": "Analysis of bull-s_eye",
+    "repo_url": "https://github.com/MoldoAndr/bull-s_eye.git",
+    "branch": "main",
+    "commit": "3e27e0a1bfae51ff4bb235363c4f0286a9935355",
+    "model": "gpt-oss:120b-cloud"
+  },
+  "executive_summary": "**Executive Summary – Bull‑S‑Eye Codebase**\n\nThe Bull‑S‑Eye platform consists of a Next.js front‑end (“web”) and a micro‑service worker that coordinates automated code‑base analysis. A comprehensive static analysis identified **231 security findings**: **30 High**, **72 Medium**, and **129 Low** severity issues, with no Critical or informational alerts. The distribution of findings indicates a **moderate to high risk exposure** – the presence of a sizable number of High‑severity defects outweighs the absence of Critical issues and suggests that the system could be compromised under targeted attacks, especially in the web component where user‑facing surfaces increase attack surface.\n\n**Key Concerns Requiring Immediate Action**\n1. **High‑severity defects (30)** – these are most likely to include authentication bypass, insecure direct object references, insecure deserialization, or unsafe handling of user‑controlled input. Any one of these can lead to full system compromise or data exfiltration and should be remediated as a top priority.\n2. **Dependency vulnerabilities** – a large proportion of Medium and Low findings are typically tied to outdated third‑party packages. Unpatched libraries in a Next.js stack are a common vector for supply‑chain attacks.\n3. **Configuration and secret management gaps** – the worker micro‑service often holds credentials for accessing analysis resources. If findings point to hard‑coded secrets or insecure defaults, immediate remediation is required to prevent credential leakage.\n\n**General Recommendations**\n- **Prioritise remediation**: Triage the 30 High‑severity items first, applying patches, input validation, and proper authentication/authorization checks. Follow with the Medium findings, focusing on those that could be chained to elevate risk.\n- **Update and harden dependencies**: Adopt a regular dependency‑update cadence (e.g., Renovate or Dependabot) and enforce minimum version policies. Perform a bill‑of‑materials (SBOM) review to ensure no vulnerable packages remain.\n- **Integrate security into the CI/CD pipeline**: Automate SAST, DAST, and dependency‑scanning tools so new issues are caught early. Enforce code‑review checklists that include security considerations for both the web and worker components.\n- **Secure configuration and secrets**: Migrate any hard‑coded credentials to a secret‑management solution (e.g., Vault, AWS Secrets Manager). Verify that environment variables are properly scoped and that default configurations (CORS, CSP, HTTPS) are hardened.\n- **Continuous monitoring and incident readiness**: Deploy runtime security monitoring (e.g., OWASP ZAP, runtime application self‑protection) and establish an incident‑response playbook for rapid containment of any exploitation.\n\nBy addressing the high‑severity defects promptly, tightening dependency hygiene, and embedding security controls throughout development and operations, Bull‑S‑Eye can shift from a moderate risk posture to a robust, defensible state.",
+  "summary": {
+    "critical": 0,
+    "high": 30,
+    "medium": 72,
+    "low": 129,
+    "info": 0,
+    "total": 231
+  },
+  "components": [
+    {
+      "name": "web",
+      "path": "web",
+      "type": "module",
+      "language": "typescript",
+      "health_score": 78,
+      "summary": "A Next.js front‑end application that provides a UI for managing analysis jobs, displaying statistics, and handling user interactions via dialogs, progress bars, and toast notifications. It leverages Tailwind CSS, Radix UI primitives, React Query and custom hooks to interact with a backend service.",
+      "files": 23,
+      "lines": 2225
+    },
+    {
+      "name": "worker",
+      "path": "worker",
+      "type": "service",
+      "language": "python",
+      "health_score": 68,
+      "summary": "The **worker** component is a micro‑service that orchestrates automated code‑base analysis. It provides a FastAPI HTTP layer for job management, a Celery worker for background analysis, a SQLite store for job state, and a suite of language‑specific security scanners that invoke external CLI tools and enrich their output with LLM‑driven insights.",
+      "files": 21,
+      "lines": 4594
+    }
+  ],
+  "findings": [
+    {
+      "id": "62d76d03-30fa-4303-b250-af755f1fd6e3",
+      "severity": "high",
+      "title": "dockerfile.security.missing-user.missing-user",
+      "description": "By not specifying a USER, a program in the container may run as 'root'. This is a security hazard. If an attacker can control a process running as root, they may have control over the container. Ensure that the last USER in a Dockerfile is a USER other than 'root'.",
+      "scanner": "semgrep",
+      "file": "/app/repos/repo_886e07d4/worker/Dockerfile",
+      "line": 73,
+      "suggestion": null
+    },
+    {
+      "id": "2b0979c3-4dcb-48b5-bd25-ff26f8a422c4",
+      "severity": "high",
+      "title": "python.sqlalchemy.security.sqlalchemy-execute-raw-query.sqlalchemy-execute-raw-query",
+      "description": "Avoiding SQL string concatenation: untrusted input concatenated with raw SQL query can result in SQL Injection. In order to execute raw query safely, prepared statement should be used. SQLAlchemy provides TextualSQL to easily used prepared statement with named parameters. For complex SQL composition, use SQL Expression Language or Schema Definition Language. In most cases, SQLAlchemy ORM will be a better option.",
+      "scanner": "semgrep",
+      "file": "/app/repos/repo_886e07d4/worker/database.py",
+      "line": 164,
+      "suggestion": null
+    },
+    {
+      "id": "213c694f-9313-45cc-b6f8-03ca952db14d",
+      "severity": "high",
+      "title": "python.sqlalchemy.security.sqlalchemy-execute-raw-query.sqlalchemy-execute-raw-query",
+      "description": "Avoiding SQL string concatenation: untrusted input concatenated with raw SQL query can result in SQL Injection. In order to execute raw query safely, prepared statement should be used. SQLAlchemy provides TextualSQL to easily used prepared statement with named parameters. For complex SQL composition, use SQL Expression Language or Schema Definition Language. In most cases, SQLAlchemy ORM will be a better option.",
+      "scanner": "semgrep",
+      "file": "/app/repos/repo_886e07d4/worker/database.py",
+      "line": 269,
+      "suggestion": null
+    },
+    {
+      "id": "c940186b-6a84-4844-b8ff-2324fd7bc466",
+      "severity": "high",
+      "title": "python.sqlalchemy.security.sqlalchemy-execute-raw-query.sqlalchemy-execute-raw-query",
+      "description": "Avoiding SQL string concatenation: untrusted input concatenated with raw SQL query can result in SQL Injection. In order to execute raw query safely, prepared statement should be used. SQLAlchemy provides TextualSQL to easily used prepared statement with named parameters. For complex SQL composition, use SQL Expression Language or Schema Definition Language. In most cases, SQLAlchemy ORM will be a better option.",
+      "scanner": "semgrep",
+      "file": "/app/repos/repo_886e07d4/worker/database.py",
+      "line": 324,
+      "suggestion": null
+    },
+    {
+      "id": "1a205a3d-304e-456a-b437-fcbb4fa238b3",
+      "severity": "high",
+      "title": "Vulnerability: CVE-2024-23334 in aiohttp",
+      "description": "aiohttp is an asynchronous HTTP client/server framework for asyncio and Python. When using aiohttp as a web server and configuring static routes, it is necessary to specify the root path for static files. Additionally, the option 'follow_symlinks' can be used to determine whether to follow symbolic links outside the static root directory. When 'follow_symlinks' is set to True, there is no validation to check if reading a file is within the root directory. This can lead to directory traversal vulnerabilities, resulting in unauthorized access to arbitrary files on the system, even when symlinks are not present.  Disabling follow_symlinks and using a reverse proxy are encouraged mitigations.  Version 3.9.2 fixes this issue.",
+      "scanner": "trivy",
+      "file": "worker/requirements.txt",
+      "line": null,
+      "suggestion": null
+    },
+    {
+      "id": "16a0b333-fc35-413f-99bd-dca6ff91574a",
+      "severity": "high",
+      "title": "Vulnerability: CVE-2024-30251 in aiohttp",
+      "description": "aiohttp is an asynchronous HTTP client/server framework for asyncio and Python. In affected versions an attacker can send a specially crafted POST (multipart/form-data) request. When the aiohttp server processes it, the server will enter an infinite loop and be unable to process any further requests. An attacker can stop the application from serving requests after sending a single request. This issue has been addressed in version 3.9.4. Users are advised to upgrade. Users unable to upgrade may manually apply a patch to their systems. Please see the linked GHSA for instructions.",
+      "scanner": "trivy",
+      "file": "worker/requirements.txt",
+      "line": null,
+      "suggestion": null
+    },
+    {
+      "id": "62678f63-fffc-4751-a536-83bd16d60d54",
+      "severity": "high",
+      "title": "Vulnerability: CVE-2024-24762 in python-multipart",
+      "description": "`python-multipart` is a streaming multipart parser for Python. When using form data, `python-multipart` uses a Regular Expression to parse the HTTP `Content-Type` header, including options. An attacker could send a custom-made `Content-Type` option that is very difficult for the RegEx to process, consuming CPU resources and stalling indefinitely (minutes or more) while holding the main event loop. This means that process can't handle any more requests, leading to regular expression denial of service. This vulnerability has been patched in version 0.0.7.",
+      "scanner": "trivy",
+      "file": "worker/requirements.txt",
+      "line": null,
+      "suggestion": null
+    },
+    {
+      "id": "2e546ea7-42ab-4cb1-9f83-6df7ab2fa2aa",
+      "severity": "high",
+      "title": "Vulnerability: CVE-2024-53981 in python-multipart",
+      "description": "python-multipart is a streaming multipart parser for Python. When parsing form data, python-multipart skips line breaks (CR \\r or LF \\n) in front of the first boundary and any tailing bytes after the last boundary. This happens one byte at a time and emits a log event each time, which may cause excessive logging for certain inputs. An attacker could abuse this by sending a malicious request with lots of data before the first or after the last boundary, causing high CPU load and stalling the processing thread for a significant amount of time. In case of ASGI application, this could stall the event loop and prevent other requests from being processed, resulting in a denial of service (DoS). This vulnerability is fixed in 0.0.18.",
+      "scanner": "trivy",
+      "file": "worker/requirements.txt",
+      "line": null,
+      "suggestion": null
+    },
+    {
+      "id": "5a6e9475-0578-463a-a196-5b814ea7ce9d",
+      "severity": "high",
+      "title": "Misconfiguration: Image user should not be 'root'",
+      "description": "Running containers with 'root' user can lead to a container escape situation. It is a best practice to run containers as non-root users, which can be done by adding a 'USER' statement to the Dockerfile.",
+      "scanner": "trivy",
+      "file": "worker/Dockerfile",
+      "line": null,
+      "suggestion": null
+    },
+    {
+      "id": "3ca76055-a178-4031-a999-fbfa5e97496f",
+      "severity": "high",
+      "title": "Misconfiguration: 'apt-get' missing '--no-install-recommends'",
+      "description": "'apt-get' install should use '--no-install-recommends' to minimize image size.",
+      "scanner": "trivy",
+      "file": "worker/Dockerfile",
+      "line": 32,
+      "suggestion": null
+    },
+    {
+      "id": "cb697ddd-3940-43c3-b58f-159c3436b858",
+      "severity": "high",
+      "title": "Misconfiguration: Image user should not be 'root'",
+      "description": "Running containers with 'root' user can lead to a container escape situation. It is a best practice to run containers as non-root users, which can be done by adding a 'USER' statement to the Dockerfile.",
+      "scanner": "trivy",
+      "file": "worker/Dockerfile.api",
+      "line": null,
+      "suggestion": null
+    },
+    {
+      "id": "66495e36-dcc1-40cf-9bb7-4b22d676edf7",
+      "severity": "high",
+      "title": "Potential leakage of sensitive data via logs",
+      "description": "The task logs the full exception message (`str(e)`) and includes the `job_id` and task ID. If an exception contains sensitive information (e.g., credentials, internal state) it will be written to whatever log sink is configured, potentially exposing data to unauthorized viewers.",
+      "scanner": "llm",
+      "file": "worker/worker.py",
+      "line": null,
+      "suggestion": "Sanitize exception information before logging. Log only a generic error message and optionally an error code. If detailed debugging is required, route that information to a secure, internal log channel with proper access controls."
+    },
+    {
+      "id": "553ebfb0-2111-455a-81ea-93b89ef44d44",
+      "severity": "high",
+      "title": "Blocking event‑loop creation inside a Celery worker",
+      "description": "Each invocation creates a new `asyncio` event loop, runs the async `engine.run()` synchronously, and then closes the loop. This defeats the purpose of async I/O, adds overhead, and can lead to resource exhaustion under heavy load.",
+      "scanner": "llm",
+      "file": "worker/worker.py",
+      "line": null,
+      "suggestion": "Run the Celery worker with an event‑loop policy (e.g., using `celery[gevent]` or `asynchronous` worker) and reuse a single loop, or refactor `AnalysisEngine.run` to be synchronous if async is not required."
+    },
+    {
+      "id": "488cad64-4733-4563-8cc4-7a0beaeccc85",
+      "severity": "high",
+      "title": "Optional API key without enforcement",
+      "description": "The `api_key` setting is optional and defaults to `None`. If downstream code does not explicitly check for its presence, the whole service may run unauthenticated, exposing the API to unauthorised usage.",
+      "scanner": "llm",
+      "file": "worker/config.py",
+      "line": null,
+      "suggestion": "Make the API key required (no default) or add explicit validation at application start‑up that aborts if the key is missing. Document the requirement clearly and reject requests without a valid key."
+    },
+    {
+      "id": "38baefd6-abb5-4723-825d-6d19ac1eb7f0",
+      "severity": "high",
+      "title": "Duplicate definition of `analysis_timeout`",
+      "description": "The field `analysis_timeout` is declared twice (lines ~42 and ~62). The second definition overwrites the first, which is confusing and may cause bugs if the intended default changes.",
+      "scanner": "llm",
+      "file": "worker/config.py",
+      "line": null,
+      "suggestion": "Remove one of the duplicate fields and keep a single source of truth. If different semantics are needed, rename the second field."
+    },
+    {
+      "id": "6787ea01-7094-42d7-a649-b741e2e95566",
+      "severity": "high",
+      "title": "Potential secret leakage through `code_snippet` and `raw_output` fields",
+      "description": "The parser stores the full secret (or up to 100 characters) in the `code_snippet` attribute and also keeps the entire raw JSON item in `raw_output`. If these findings are logged, persisted, or sent to downstream services without redaction, sensitive data could be unintentionally exposed.",
+      "scanner": "llm",
+      "file": "worker/scanners/gitleaks.py",
+      "line": null,
+      "suggestion": "Sanitize or hash secret values before storing them. Provide an option to omit or mask the secret in both `code_snippet` and `raw_output`, and ensure any logging of findings redacts sensitive fields."
+    },
+    {
+      "id": "19e2868b-0b94-4f27-9082-9b98e9d90ae4",
+      "severity": "high",
+      "title": "No handling of non‑zero Trivy exit codes",
+      "description": "The parser proceeds even when Trivy returns an error (e.g., missing target, permission denied). This can lead to misleading empty or partial findings and hides the original failure reason.",
+      "scanner": "llm",
+      "file": "worker/scanners/trivy.py",
+      "line": null,
+      "suggestion": "Check `exit_code` before parsing. If it is non‑zero, log the error and optionally raise an exception or return an empty list with a diagnostic message."
+    },
+    {
+      "id": "18952fb2-4ca2-45a7-b1d6-ddd1a4d15a27",
+      "severity": "high",
+      "title": "Potential leakage of sensitive command arguments via logging",
+      "description": "The `run` method logs the full command string (`command_str`) which may contain secrets, API keys, or authentication tokens if a concrete scanner builds a command that includes such data. Logging sensitive information can lead to credential exposure in log storage or monitoring systems.",
+      "scanner": "llm",
+      "file": "worker/scanners/base.py",
+      "line": null,
+      "suggestion": "Sanitize or redact sensitive parts of the command before logging. Provide a whitelist of safe arguments or allow scanners to flag which arguments are secret."
+    },
+    {
+      "id": "d5497890-4b8b-467e-b805-dafd5fc6deb1",
+      "severity": "high",
+      "title": "Dead / unused helper `_run_command`",
+      "description": "`_run_command` is defined but never used anywhere in the class, adding maintenance overhead and potential confusion.",
+      "scanner": "llm",
+      "file": "worker/scanners/base.py",
+      "line": null,
+      "suggestion": "Remove the method or integrate it into the primary execution flow if needed."
+    },
+    {
+      "id": "ea0a5cdd-d34d-4fb5-bfc2-f229ee30c003",
+      "severity": "high",
+      "title": "Uncaught exception when converting scanner output to integers",
+      "description": "Both GolangciLintScanner and GosecScanner assume fields like \"Line\" and \"Column\" are numeric strings and call int() without guarding against ValueError. If a malicious or malformed scanner output contains a non‑numeric value these calls will raise an exception, crashing the scanning process and potentially enabling a denial‑of‑service against the service that runs the scanners.",
+      "scanner": "llm",
+      "file": "worker/scanners/go_scanners.py",
+      "line": null,
+      "suggestion": "Validate and sanitize numeric fields before conversion. Use a safe conversion helper, e.g. `int(value) if str(value).isdigit() else None`, and wrap the conversion in a try/except that logs the problem and continues processing other findings."
+    },
+    {
+      "id": "cf1181d8-42bd-4504-a53d-8fe9a7b17d4c",
+      "severity": "high",
+      "title": "Duplicated availability and version detection logic",
+      "description": "Each scanner re‑implements `is_available` and `get_version` with the same pattern of calling `_run_command` and checking the exit code. This duplication increases maintenance burden and the risk of inconsistencies.",
+      "scanner": "llm",
+      "file": "worker/scanners/go_scanners.py",
+      "line": null,
+      "suggestion": "Extract the common logic into a helper method in the BaseScanner (e.g., `_run_tool('--version')`) and let each subclass provide the executable name."
+    },
+    {
+      "id": "904a6fc2-9c3e-4661-a169-e23d165c17f8",
+      "severity": "high",
+      "title": "Potential command injection via `target_path`",
+      "description": "Each scanner builds a command list that includes `str(target_path)` (or the repository path) directly from a caller‑supplied argument. If `_run_command` ultimately executes the list with `shell=True` or otherwise concatenates it, an attacker controlling `target_path` could inject additional arguments or commands (e.g., \"; rm -rf /\").",
+      "scanner": "llm",
+      "file": "worker/scanners/python_scanners.py",
+      "line": null,
+      "suggestion": "Ensure `_run_command` uses `subprocess.run(..., shell=False)` and validates/sanitises `target_path` (e.g., restrict to existing directories, reject path separators that could be interpreted as multiple arguments)."
+    },
+    {
+      "id": "95294caf-3fc1-405d-ae9d-0c1d5c5e647d",
+      "severity": "high",
+      "title": "Hard‑coded confidence and severity mappings",
+      "description": "Confidence scores (e.g., 0.95, 0.9) and severity strings are baked into the code, making it difficult to tune them per‑project or to adapt to new tool output formats.",
+      "scanner": "llm",
+      "file": "worker/scanners/python_scanners.py",
+      "line": null,
+      "suggestion": "Externalise these mappings to configuration files or constants, and provide a clear mapping table with comments."
+    },
+    {
+      "id": "76fb6a54-7de9-46da-a246-d939e017ca94",
+      "severity": "high",
+      "title": "Missing Authentication/Authorization",
+      "description": "All endpoints are publicly accessible; any client can create, stop, delete, or read jobs and reports without proving identity. This can lead to data leakage, resource abuse, or denial‑of‑service attacks.",
+      "scanner": "llm",
+      "file": "worker/api/main.py",
+      "line": null,
+      "suggestion": "Integrate an authentication scheme (OAuth2, API keys, JWT, etc.) and enforce role‑based access control for each endpoint. Use FastAPI dependencies (e.g., Depends(get_current_user)) to protect routes."
+    },
+    {
+      "id": "29ac97f4-2ef2-4b60-87c3-90a8e4407a54",
+      "severity": "high",
+      "title": "Blocking Database Calls Inside Async Endpoints",
+      "description": "All database interactions (`db.get_job`, `db.get_jobs`, etc.) appear to be synchronous. Calling them from async FastAPI routes blocks the event loop, degrading concurrency and performance.",
+      "scanner": "llm",
+      "file": "worker/api/main.py",
+      "line": null,
+      "suggestion": "Make the DB layer asynchronous (e.g., using databases or async SQLAlchemy) or wrap the calls in `run_in_threadpool` (`await anyio.to_thread.run_sync(db.get_job, job_id)`)."
+    },
+    {
+      "id": "b2ac55c8-5c5c-4c76-a7ce-b10bc51b34cb",
+      "severity": "high",
+      "title": "Unvalidated repository URL (potential SSRF/remote code execution)",
+      "description": "The `repo_url` supplied by the job is passed directly to `git.Repo.clone_from` without any validation or sanitisation. An attacker could provide a URL pointing to an internal service, a malicious repository containing git hooks, or a repository that triggers large downloads, leading to denial‑of‑service or unintended code execution on the host.",
+      "scanner": "llm",
+      "file": "worker/analysis/engine.py",
+      "line": null,
+      "suggestion": "Validate that the URL is a proper HTTPS/SSH git URL, enforce a whitelist of allowed domains, and optionally run the clone in a sandboxed container with network restrictions and a timeout."
+    },
+    {
+      "id": "3327a554-df90-4fed-8a40-4f637e8c0adf",
+      "severity": "high",
+      "title": "Monolithic `run` method – low maintainability",
+      "description": "The `run` coroutine contains the entire pipeline, mixing I/O, DB updates, status tracking and error handling. This makes the code hard to test, extend, and reason about.",
+      "scanner": "llm",
+      "file": "worker/analysis/engine.py",
+      "line": null,
+      "suggestion": "Break the workflow into smaller, well‑named async methods (e.g., `clone_repo`, `detect_components`, `run_scanners`, `run_llm`, `generate_report`) and orchestrate them from `run`."
+    },
+    {
+      "id": "274e45c3-8df1-4ac4-8f49-7bd1c884e1cb",
+      "severity": "high",
+      "title": "useEffect dependency array causes listener leakage",
+      "description": "The `useEffect` in `useToast` lists `state` as a dependency, so the effect runs on every render and pushes a new `setState` listener each time. This quickly creates a large number of duplicate listeners, leading to memory leaks, duplicate state updates and degraded performance.",
+      "scanner": "llm",
+      "file": "web/src/hooks/use-toast.ts",
+      "line": null,
+      "suggestion": "Change the dependency array to `[]` (run only once on mount) and keep the cleanup function as‑is. Optionally guard against duplicate registration."
+    },
+    {
+      "id": "f61ac2d4-d856-43c4-8beb-6d30c7b439ed",
+      "severity": "high",
+      "title": "Unauthenticated data exposure",
+      "description": "The page fetches job data (api.getJob, api.getComponents, etc.) solely based on the URL parameter `id` without any client‑side authentication or authorization checks. If the backend does not enforce proper access control, an attacker could enumerate job IDs and retrieve data belonging to other users.",
+      "scanner": "llm",
+      "file": "web/src/app/jobs/[id]/page.tsx",
+      "line": null,
+      "suggestion": "Add client‑side checks (e.g., verify the current user’s permission via a JWT or session) before making API calls, and enforce strict server‑side access control. Optionally, redirect or show an error if the user is not authorized."
+    },
+    {
+      "id": "bd8fe028-7768-4cd1-9e19-e46d4c3d4553",
+      "severity": "high",
+      "title": "Potential runtime crash due to unchecked optional fields",
+      "description": "`job.findings_count` is accessed directly for `totalFindings` while later the code checks its existence for `criticalAndHigh`. If `findings_count` is missing, the component will throw an exception.",
+      "scanner": "llm",
+      "file": "web/src/components/job-list.tsx",
+      "line": null,
+      "suggestion": "Guard all optional properties with optional chaining or default values."
+    },
+    {
+      "id": "fe2d0c57-0d34-4727-b92b-a04b1cd4e770",
+      "severity": "medium",
+      "title": "python.fastapi.security.wildcard-cors.wildcard-cors",
+      "description": "CORS policy allows any origin (using wildcard '*'). This is insecure and should be avoided.",
+      "scanner": "semgrep",
+      "file": "/app/repos/repo_886e07d4/worker/api/main.py",
+      "line": 47,
+      "suggestion": null
+    },
+    {
+      "id": "0fea75fa-f955-413b-bb96-5c68330db5f1",
+      "severity": "medium",
+      "title": "Vulnerability: CVE-2024-23829 in aiohttp",
+      "description": "aiohttp is an asynchronous HTTP client/server framework for asyncio and Python. Security-sensitive parts of the Python HTTP parser retained minor differences in allowable character sets, that must trigger error handling to robustly match frame boundaries of proxies in order to protect against injection of additional requests. Additionally, validation could trigger exceptions that were not handled consistently with processing of other malformed input.  Being more lenient than internet standards require could, depending on deployment environment, assist in request smuggling. The unhandled exception could cause excessive resource consumption on the application server and/or its logging facilities. This vulnerability exists due to an incomplete fix for CVE-2023-47627. Version 3.9.2 fixes this vulnerability.",
+      "scanner": "trivy",
+      "file": "worker/requirements.txt",
+      "line": null,
+      "suggestion": null
+    },
+    {
+      "id": "9800f882-4632-4884-ae81-7522f5aead3c",
+      "severity": "medium",
+      "title": "Vulnerability: CVE-2024-27306 in aiohttp",
+      "description": "aiohttp is an asynchronous HTTP client/server framework for asyncio and Python. A XSS vulnerability exists on index pages for static file handling. This vulnerability is fixed in 3.9.4. We have always recommended using a reverse proxy server (e.g. nginx) for serving static files. Users following the recommendation are unaffected. Other users can disable `show_index` if unable to upgrade.",
+      "scanner": "trivy",
+      "file": "worker/requirements.txt",
+      "line": null,
+      "suggestion": null
+    },
+    {
+      "id": "a903e14d-4bfe-4167-8f71-9af82317401b",
+      "severity": "medium",
+      "title": "Vulnerability: CVE-2024-52304 in aiohttp",
+      "description": "aiohttp is an asynchronous HTTP client/server framework for asyncio and Python. Prior to version 3.10.11, the Python parser parses newlines in chunk extensions incorrectly which can lead to request smuggling vulnerabilities under certain conditions. If a pure Python version of aiohttp is installed (i.e. without the usual C extensions) or `AIOHTTP_NO_EXTENSIONS` is enabled, then an attacker may be able to execute a request smuggling attack to bypass certain firewalls or proxy protections. Version 3.10.11 fixes the issue.",
+      "scanner": "trivy",
+      "file": "worker/requirements.txt",
+      "line": null,
+      "suggestion": null
+    },
+    {
+      "id": "4dcb07ec-46b1-4546-9241-bf1e7d299fa4",
+      "severity": "medium",
+      "title": "Vulnerability: CVE-2024-34064 in jinja2",
+      "description": "Jinja is an extensible templating engine. The `xmlattr` filter in affected versions of Jinja accepts keys containing non-attribute characters. XML/HTML attributes cannot contain spaces, `/`, `>`, or `=`, as each would then be interpreted as starting a separate attribute. If an application accepts keys (as opposed to only values) as user input, and renders these in pages that other users see as well, an attacker could use this to inject other attributes and perform XSS. The fix for CVE-2024-22195 only addressed spaces but not other characters. Accepting keys as user input is now explicitly considered an unintended use case of the `xmlattr` filter, and code that does so without otherwise validating the input should be flagged as insecure, regardless of Jinja version. Accepting _values_ as user input continues to be safe. This vulnerability is fixed in 3.1.4.",
+      "scanner": "trivy",
+      "file": "worker/requirements.txt",
+      "line": null,
+      "suggestion": null
+    },
+    {
+      "id": "c9029323-64c8-4fea-b954-fc54a3f23728",
+      "severity": "medium",
+      "title": "Vulnerability: CVE-2024-56201 in jinja2",
+      "description": "Jinja is an extensible templating engine. In versions on the 3.x branch prior to 3.1.5, a bug in the Jinja compiler allows an attacker that controls both the content and filename of a template to execute arbitrary Python code, regardless of if Jinja's sandbox is used. To exploit the vulnerability, an attacker needs to control both the filename and the contents of a template. Whether that is the case depends on the type of application using Jinja. This vulnerability impacts users of applications which execute untrusted templates where the template author can also choose the template filename. This vulnerability is fixed in 3.1.5.",
+      "scanner": "trivy",
+      "file": "worker/requirements.txt",
+      "line": null,
+      "suggestion": null
+    },
+    {
+      "id": "ea53c920-a1d9-4262-bb7a-265b6470b629",
+      "severity": "medium",
+      "title": "Vulnerability: CVE-2024-56326 in jinja2",
+      "description": "Jinja is an extensible templating engine. Prior to 3.1.5, An oversight in how the Jinja sandboxed environment detects calls to str.format allows an attacker that controls the content of a template to execute arbitrary Python code. To exploit the vulnerability, an attacker needs to control the content of a template. Whether that is the case depends on the type of application using Jinja. This vulnerability impacts users of applications which execute untrusted templates. Jinja's sandbox does catch calls to str.format and ensures they don't escape the sandbox. However, it's possible to store a reference to a malicious string's format method, then pass that to a filter that calls it. No such filters are built-in to Jinja, but could be present through custom filters in an application. After the fix, such indirect calls are also handled by the sandbox. This vulnerability is fixed in 3.1.5.",
+      "scanner": "trivy",
+      "file": "worker/requirements.txt",
+      "line": null,
+      "suggestion": null
+    },
+    {
+      "id": "c2e6fbdc-1b84-431d-9a0e-b1a22629b9aa",
+      "severity": "medium",
+      "title": "Vulnerability: CVE-2025-27516 in jinja2",
+      "description": "Jinja is an extensible templating engine. Prior to 3.1.6, an oversight in how the Jinja sandboxed environment interacts with the |attr filter allows an attacker that controls the content of a template to execute arbitrary Python code. To exploit the vulnerability, an attacker needs to control the content of a template. Whether that is the case depends on the type of application using Jinja. This vulnerability impacts users of applications which execute untrusted templates. Jinja's sandbox does catch calls to str.format and ensures they don't escape the sandbox. However, it's possible to use the |attr filter to get a reference to a string's plain format method, bypassing the sandbox. After the fix, the |attr filter no longer bypasses the environment's attribute lookup. This vulnerability is fixed in 3.1.6.",
+      "scanner": "trivy",
+      "file": "worker/requirements.txt",
+      "line": null,
+      "suggestion": null
+    },
+    {
+      "id": "8dd91cb6-26d2-4c6c-b9ea-c9ab5e7eca64",
+      "severity": "medium",
+      "title": "E722: Do not use bare `except`",
+      "description": "Do not use bare `except`",
+      "scanner": "ruff",
+      "file": "/app/repos/repo_886e07d4/worker/analysis/component_detector.py",
+      "line": 206,
+      "suggestion": null
+    },
+    {
+      "id": "9e6117ae-3dd8-4d14-83f9-65ffa2f46dbf",
+      "severity": "medium",
+      "title": "E722: Do not use bare `except`",
+      "description": "Do not use bare `except`",
+      "scanner": "ruff",
+      "file": "/app/repos/repo_886e07d4/worker/analysis/component_detector.py",
+      "line": 302,
+      "suggestion": null
+    },
+    {
+      "id": "e4c10a83-3d93-49a3-a081-30781d8a9e1d",
+      "severity": "medium",
+      "title": "E722: Do not use bare `except`",
+      "description": "Do not use bare `except`",
+      "scanner": "ruff",
+      "file": "/app/repos/repo_886e07d4/worker/analysis/context_aware_analysis.py",
+      "line": 284,
+      "suggestion": null
+    },
+    {
+      "id": "556fdb35-4957-4037-8cd5-1232d0d5c47d",
+      "severity": "medium",
+      "title": "B104: Possible binding to all interfaces.",
+      "description": "Possible binding to all interfaces.",
+      "scanner": "bandit",
+      "file": "/app/repos/repo_886e07d4/worker/config.py",
+      "line": 123,
+      "suggestion": null
+    },
+    {
+      "id": "092010bc-d720-4a00-83f0-2ecb3f882a38",
+      "severity": "medium",
+      "title": "B608: Possible SQL injection vector through string-based query construction.",
+      "description": "Possible SQL injection vector through string-based query construction.",
+      "scanner": "bandit",
+      "file": "/app/repos/repo_886e07d4/worker/database.py",
+      "line": 164,
+      "suggestion": null
+    },
+    {
+      "id": "1d859189-c08c-45d2-bef5-9b65efd93b08",
+      "severity": "medium",
+      "title": "B608: Possible SQL injection vector through string-based query construction.",
+      "description": "Possible SQL injection vector through string-based query construction.",
+      "scanner": "bandit",
+      "file": "/app/repos/repo_886e07d4/worker/database.py",
+      "line": 269,
+      "suggestion": null
+    },
+    {
+      "id": "ee23b795-8e26-45ac-98df-008dbc4a18e7",
+      "severity": "medium",
+      "title": "B608: Possible SQL injection vector through string-based query construction.",
+      "description": "Possible SQL injection vector through string-based query construction.",
+      "scanner": "bandit",
+      "file": "/app/repos/repo_886e07d4/worker/database.py",
+      "line": 324,
+      "suggestion": null
+    },
+    {
+      "id": "f5f0649a-0b82-41d6-80ff-03c4a42453f3",
+      "severity": "medium",
+      "title": "Insufficient validation of external inputs",
+      "description": "Values such as `repo_url`, `branch`, `model`, `name`, and arbitrary JSON `config` are stored directly without validation or sanitisation. If these values are later incorporated into OS commands (e.g., a `git clone`) or other security‑critical contexts, an attacker could inject malicious payloads.",
+      "scanner": "llm",
+      "file": "worker/database.py",
+      "line": null,
+      "suggestion": "Validate and whitelist allowed characters/format for each field (e.g., URL validation for `repo_url`, regex for branch names). Reject or sanitise inputs that do not meet the expected schema before persisting."
+    },
+    {
+      "id": "b216425d-d828-49a6-bccf-e7bf60b9bbde",
+      "severity": "medium",
+      "title": "Repeated JSON (de)serialization logic",
+      "description": "Every read of a job record manually deserialises the `config` field, leading to duplicated code and risk of inconsistency if the schema evolves.",
+      "scanner": "llm",
+      "file": "worker/database.py",
+      "line": null,
+      "suggestion": "Encapsulate JSON handling in a helper (e.g., `self._parse_config(row['config'])`) or store the config as a SQLite JSON type if supported."
+    },
+    {
+      "id": "0a761db3-c1e9-4258-8606-603a19f1c477",
+      "severity": "medium",
+      "title": "Hard‑coded schema migration without idempotency",
+      "description": "Running the script twice will fail (e.g., `jobs_new` already exists, indexes already present). There is no version check or guard against re‑execution, which makes the migration brittle.",
+      "scanner": "llm",
+      "file": "worker/migrate_db.py",
+      "line": null,
+      "suggestion": "Add a schema‑version table or check for the existence of `jobs_new` / the new column before performing the migration. Make the script safe to run multiple times."
+    },
+    {
+      "id": "af3c41f0-f132-42e2-a738-6c14eb17c902",
+      "severity": "medium",
+      "title": "Using `SELECT *` to copy data may break if column order changes",
+      "description": "The `INSERT INTO jobs_new SELECT * FROM jobs` relies on identical column ordering. Adding or reordering columns in the future would cause a runtime error or data misalignment.",
+      "scanner": "llm",
+      "file": "worker/migrate_db.py",
+      "line": null,
+      "suggestion": "Specify the column list explicitly for both source and destination tables to guarantee correct mapping."
+    },
+    {
+      "id": "b583c2a1-60d4-4bb4-8bf0-1477edb68574",
+      "severity": "medium",
+      "title": "Insecure Redis connection configuration",
+      "description": "The Celery broker and backend are set directly from `settings.redis_url` without any verification of TLS/SSL usage or authentication handling. If the URL does not enforce encryption, credentials could be sent in clear text over the network.",
+      "scanner": "llm",
+      "file": "worker/worker.py",
+      "line": null,
+      "suggestion": "Validate that `settings.redis_url` includes a scheme that enforces TLS (e.g., `rediss://`). Prefer using environment‑controlled variables for Redis password and enforce `redis_ssl_cert_reqs`/`redis_ssl_ca_certs` in Celery configuration. Document the required security settings."
+    },
+    {
+      "id": "117e6e57-ea91-4bd6-8d0e-4161fbf29db9",
+      "severity": "medium",
+      "title": "Lazy import inside task function",
+      "description": "Importing `AnalysisEngine` inside `analyze_repository` adds import overhead on every task execution and may hide import‑time errors until runtime.",
+      "scanner": "llm",
+      "file": "worker/worker.py",
+      "line": null,
+      "suggestion": "Move the import to module level. If circular imports are a concern, restructure modules to break the cycle."
+    },
+    {
+      "id": "accf206a-0a78-4c7e-9220-11884d352ac4",
+      "severity": "medium",
+      "title": "Broad exception catch without specific handling",
+      "description": "Catching `Exception` swallows all errors, including programmer mistakes, and then re‑raises them without adding context, which makes debugging harder.",
+      "scanner": "llm",
+      "file": "worker/worker.py",
+      "line": null,
+      "suggestion": "Catch specific expected exceptions (e.g., `AnalysisError`, `RedisError`) and provide meaningful error messages or retries. Let unexpected exceptions propagate naturally."
+    },
+    {
+      "id": "65ff22ac-c34c-4f4f-8aae-4bceff8eab84",
+      "severity": "medium",
+      "title": "Potential SSRF via unvalidated Ollama API URL",
+      "description": "The `ollama_api_url` field accepts any string from the environment. An attacker who can influence the environment could point the worker to an internal service, causing Server‑Side Request Forgery (SSRF).",
+      "scanner": "llm",
+      "file": "worker/config.py",
+      "line": null,
+      "suggestion": "Validate that the URL matches an allow‑list of trusted hosts or at least uses HTTPS and a proper hostname. Use `pydantic`’s `HttpUrl` type for automatic validation."
+    },
+    {
+      "id": "57fbe255-952e-458d-9543-3d187151443e",
+      "severity": "medium",
+      "title": "Mixed use of `Optional[str]` for list-like config (`ollama_models`)",
+      "description": "`ollama_models` is a string that may contain a JSON array or a comma‑separated list. This overloads a single type with multiple formats, making validation and error handling harder.",
+      "scanner": "llm",
+      "file": "worker/config.py",
+      "line": null,
+      "suggestion": "Introduce a dedicated Pydantic type (e.g., `List[ModelSpec]`) and use a custom validator to parse the environment variable, providing clear errors for malformed input."
+    },
+    {
+      "id": "5e063db4-1b64-442b-b542-2638fdf20449",
+      "severity": "medium",
+      "title": "Insufficient handling of command execution failures",
+      "description": "Both scanners ignore non‑zero exit codes and do not surface errors from the underlying cargo commands. If the command fails (e.g., due to network issues, missing Cargo.lock, or malicious manipulation), the scanner will return an empty finding list, potentially hiding real problems.",
+      "scanner": "llm",
+      "file": "worker/scanners/rust_scanners.py",
+      "line": null,
+      "suggestion": "Validate `exit_code` before parsing output. Log or raise an explicit error when the command fails, and optionally include `stderr` in the report to aid debugging."
+    },
+    {
+      "id": "065b0f2f-b797-4821-bf43-a9fba14367e9",
+      "severity": "medium",
+      "title": "Insufficient validation of external command output",
+      "description": "The code assumes that the JSON output from `gitleaks` is a list. If the tool returns a different structure (e.g., an object with an error field) the parser silently returns an empty list, potentially hiding real errors from the caller.",
+      "scanner": "llm",
+      "file": "worker/scanners/gitleaks.py",
+      "line": null,
+      "suggestion": "Add explicit handling for known error formats from `gitleaks` and surface them to the caller, perhaps by raising a custom exception or adding a warning finding."
+    },
+    {
+      "id": "a75c568a-c2d3-45df-a43a-69af5fab9153",
+      "severity": "medium",
+      "title": "Potential command injection if _run_command uses a shell",
+      "description": "The `build_command` method creates a command list that includes a user‑controlled `target_path` (or `repo_path`). If the underlying `_run_command` implementation later executes the command with `shell=True`, an attacker who can influence the path could inject additional commands or arguments.",
+      "scanner": "llm",
+      "file": "worker/scanners/trivy.py",
+      "line": null,
+      "suggestion": "Ensure `_run_command` always invokes subprocess with `shell=False`. If a shell must be used, explicitly sanitize `target_path` (e.g., verify it is an absolute path inside the allowed repository directory) before passing it to the command."
+    },
+    {
+      "id": "531585fa-1533-483d-8198-5fbc2f706bf3",
+      "severity": "medium",
+      "title": "Unbounded memory consumption when parsing Trivy output",
+      "description": "`parse_output` loads the entire stdout string into memory via `json.loads`. A crafted or unexpectedly large Trivy report could exhaust memory and cause a denial‑of‑service.",
+      "scanner": "llm",
+      "file": "worker/scanners/trivy.py",
+      "line": null,
+      "suggestion": "Stream the JSON output instead of loading it all at once, or impose a reasonable size limit (e.g., refuse to parse if `len(stdout) > MAX_SIZE`). Additionally, capture and handle `MemoryError` where appropriate."
+    },
+    {
+      "id": "2a21a47a-4eb0-4e48-b576-2c5803b29661",
+      "severity": "medium",
+      "title": "Hard‑coded confidence and severity values",
+      "description": "Confidence scores and severity strings are hard‑coded (e.g., 0.95, \"high\"). This reduces flexibility and may misrepresent the actual risk levels reported by Trivy.",
+      "scanner": "llm",
+      "file": "worker/scanners/trivy.py",
+      "line": null,
+      "suggestion": "Derive confidence and severity directly from Trivy's metadata when available, or expose configuration options to adjust these defaults."
+    },
+    {
+      "id": "b1e591e8-c863-4eac-9472-e8105c378d91",
+      "severity": "medium",
+      "title": "Insufficient validation of user‑supplied `target_path`",
+      "description": "`scan` converts the caller‑provided `target_path` into a `Path` and passes it directly to `run`. If an attacker can control this value they could cause the scanner to run on arbitrary locations (including outside the repository) or provoke path‑traversal attacks, especially if the concrete scanner builds file‑system commands from it.",
+      "scanner": "llm",
+      "file": "worker/scanners/base.py",
+      "line": null,
+      "suggestion": "Validate that `target_path` is inside `self.repo_path` (e.g., using `Path.resolve()` and ensuring it starts with the repo root). Reject or sanitize unsafe paths."
+    },
+    {
+      "id": "40205c68-c708-4be9-862a-e43b5971d9ff",
+      "severity": "medium",
+      "title": "Execution status logic treats non‑zero exit codes as success",
+      "description": "The `run` method sets `success=exit_code in [0, 1]`. Many tools use non‑zero exit codes for fatal errors. Treating them as success can mask failures and lead to downstream processes trusting incomplete or erroneous results.",
+      "scanner": "llm",
+      "file": "worker/scanners/base.py",
+      "line": null,
+      "suggestion": "Make the success criteria explicit per scanner or default to `exit_code == 0`. Allow concrete scanners to override if they legitimately use other codes."
+    },
+    {
+      "id": "88d049c7-2410-4b06-af04-474b2ea2f512",
+      "severity": "medium",
+      "title": "Blocking `time.time()` for duration measurement",
+      "description": "`time.time()` can be affected by system clock adjustments, producing inaccurate duration measurements.",
+      "scanner": "llm",
+      "file": "worker/scanners/base.py",
+      "line": null,
+      "suggestion": "Use `time.monotonic()` (or `time.perf_counter()`) to compute elapsed time."
+    },
+    {
+      "id": "7b573f67-b3e9-4b9d-bc9b-0b3970730587",
+      "severity": "medium",
+      "title": "Potential memory blow‑up with large scanner output",
+      "description": "`subprocess.run(..., capture_output=True, text=True)` loads the entire stdout and stderr into memory. For scanners emitting large reports this can exhaust RAM.",
+      "scanner": "llm",
+      "file": "worker/scanners/base.py",
+      "line": null,
+      "suggestion": "Stream output incrementally (e.g., using `subprocess.Popen` with iterating over `stdout`), or set a reasonable size limit and truncate if needed."
+    },
+    {
+      "id": "a6f87119-14c0-4448-afb4-10aad844d8b0",
+      "severity": "medium",
+      "title": "Potential command injection via unvalidated target_path",
+      "description": "The `build_command` methods accept an optional `target_path` argument but ignore it, always invoking the external tool in the current working directory. If a future change adds the user‑supplied path directly into the command list without proper sanitisation, it could allow an attacker to inject arbitrary shell arguments or traverse directories.",
+      "scanner": "llm",
+      "file": "worker/scanners/go_scanners.py",
+      "line": null,
+      "suggestion": "Either remove the unused parameter or correctly incorporate it using a safe method such as `Path(target_path).resolve()` and passing it as an argument (e.g., `str(target_path)`), ensuring that the path is validated to be within an allowed directory before invoking the external command."
+    },
+    {
+      "id": "2bbf8641-4e29-4c7c-9f42-9af3e00eb3ef",
+      "severity": "medium",
+      "title": "`target_path` argument is ignored in all scanners",
+      "description": "The public API of `BaseScanner.build_command` includes a `target_path` argument, yet the concrete implementations never use it. This makes the API misleading and prevents callers from scanning arbitrary directories.",
+      "scanner": "llm",
+      "file": "worker/scanners/go_scanners.py",
+      "line": null,
+      "suggestion": "Update each `build_command` to prepend the supplied `target_path` (e.g., `str(target_path)`) to the command or explicitly document that the scanners always operate on the current working directory and remove the parameter."
+    },
+    {
+      "id": "7b5d608e-7bbd-4f1f-bab6-2999ba1b35c9",
+      "severity": "medium",
+      "title": "Potential command‑injection via target_path",
+      "description": "The `build_command` method accepts an optional `target_path` supplied by callers and injects its string representation directly into the argument list passed to `_run_command`. If the underlying `_run_command` implementation concatenates arguments into a shell string (instead of using execve‑style calls), a malicious path containing shell metacharacters could lead to command injection.",
+      "scanner": "llm",
+      "file": "worker/scanners/semgrep.py",
+      "line": null,
+      "suggestion": "Ensure `_run_command` always invokes subprocess without `shell=True` and quotes arguments safely. Additionally, validate `target_path` (e.g., ensure it is under the repository root) before using it."
+    },
+    {
+      "id": "4534b166-1fb5-4308-b0a5-7dc95e16fb16",
+      "severity": "medium",
+      "title": "Duplicate version‑checking logic",
+      "description": "`is_available` and `get_version` both invoke `self._run_command([\"semgrep\", \"--version\"])` separately, resulting in two subprocess calls for the same information.",
+      "scanner": "llm",
+      "file": "worker/scanners/semgrep.py",
+      "line": null,
+      "suggestion": "Cache the version result on first call (e.g., store in a private attribute) and reuse it for both methods."
+    },
+    {
+      "id": "12d0c156-d127-4946-b762-5fedda54b92b",
+      "severity": "medium",
+      "title": "Hard‑coded configuration values",
+      "description": "Values such as `--timeout 300` and `--max-target-bytes 5000000` are embedded directly in the command, making them difficult to adjust without code changes.",
+      "scanner": "llm",
+      "file": "worker/scanners/semgrep.py",
+      "line": null,
+      "suggestion": "Expose these values as class attributes or constructor parameters with sensible defaults, allowing callers or configuration files to override them."
+    },
+    {
+      "id": "9300aa7a-d942-40ff-b0a8-ff5d2a652ae6",
+      "severity": "medium",
+      "title": "Eager import of all scanner modules",
+      "description": "All concrete scanner modules are imported at import‑time, even if the caller only needs a subset (e.g., only universal scanners). Some scanner modules may perform heavyweight initialisation or have side effects, increasing start‑up latency and memory usage.",
+      "scanner": "llm",
+      "file": "worker/scanners/__init__.py",
+      "line": null,
+      "suggestion": "Replace eager imports with lazy imports (e.g., using importlib) inside the factory functions, or expose a lightweight registry that imports a scanner module only when its class is instantiated."
+    },
+    {
+      "id": "2a3174c7-3f86-4450-9ab0-5fe5dbb4ce59",
+      "severity": "medium",
+      "title": "Incorrect ESLint severity mapping",
+      "description": "ESLint uses severity values 0 (off), 1 (warning) and 2 (error). The current code treats any non‑2 value as \"medium\", turning warnings (1) into a higher severity than intended and discarding the \"low\" level.",
+      "scanner": "llm",
+      "file": "worker/scanners/js_scanners.py",
+      "line": null,
+      "suggestion": "Map severity 0 → \"low\", 1 → \"medium\", 2 → \"high\" (or use the tool's own mapping) and handle unexpected values gracefully."
+    },
+    {
+      "id": "80383ada-2507-4355-9436-88ec8562f3c2",
+      "severity": "medium",
+      "title": "Sensitive data leakage through `raw_output`",
+      "description": "The parsed `ScannerFinding` objects store the entire JSON record from the external tool in the `raw_output` field. If the scanned source code contains secrets (API keys, passwords) that appear in the tool output, these secrets could be persisted, logged or transmitted unintentionally.",
+      "scanner": "llm",
+      "file": "worker/scanners/python_scanners.py",
+      "line": null,
+      "suggestion": "Sanitise or truncate `raw_output` before storing it, or make the field optional and populate it only when explicitly requested."
+    },
+    {
+      "id": "2cf61bd9-f23e-4aa3-a6fd-f84caf4f7a0e",
+      "severity": "medium",
+      "title": "Inconsistent severity determination in `PipAuditScanner`",
+      "description": "`_map_cvss_severity` returns \"high\" when fix versions are available and \"critical\" otherwise, which is the opposite of typical CVSS interpretation where an unfixed vulnerability is usually considered higher severity.",
+      "scanner": "llm",
+      "file": "worker/scanners/python_scanners.py",
+      "line": null,
+      "suggestion": "Rename the method to reflect its intent or invert the logic so that missing fixes yield a higher severity label."
+    },
+    {
+      "id": "43c7525c-c028-4976-b63c-bf07d6371502",
+      "severity": "medium",
+      "title": "Silent suppression of malformed JSON lines in Mypy parser",
+      "description": "In `MypyScanner.parse_output` any line that fails `json.loads` is silently ignored, potentially discarding useful error information.",
+      "scanner": "llm",
+      "file": "worker/scanners/python_scanners.py",
+      "line": null,
+      "suggestion": "Log a warning with the offending line or raise an exception for unexpected output formats."
+    },
+    {
+      "id": "a35db426-e59e-4241-bd44-a076e7a70cb8",
+      "severity": "medium",
+      "title": "Overly Permissive CORS Configuration",
+      "description": "CORS is configured with allow_origins=['*'], allow_credentials=True, and all methods/headers, effectively allowing any origin to interact with the API and send credentials, facilitating CSRF attacks when cookies are used.",
+      "scanner": "llm",
+      "file": "worker/api/main.py",
+      "line": null,
+      "suggestion": "Restrict allow_origins to a whitelist of trusted domains. Disable allow_credentials unless required, and limit allowed methods/headers to those actually needed."
+    },
+    {
+      "id": "757838a5-0049-414f-9bb6-c5ba52ac06b0",
+      "severity": "medium",
+      "title": "Potential Exposure of Per‑Job Ollama API Keys",
+      "description": "The optional per‑job `ollama_api_key` is stored in the database without encryption and may be returned indirectly via job status endpoints if the implementation of `db.get_job` includes the config field.",
+      "scanner": "llm",
+      "file": "worker/api/main.py",
+      "line": null,
+      "suggestion": "Encrypt sensitive fields at rest (e.g., using a field‑level encryption library). Ensure response models never expose the key, and scrub it from logs."
+    },
+    {
+      "id": "03b871fd-ef6a-490c-84db-2b71a1cc7f14",
+      "severity": "medium",
+      "title": "Inefficient Polling in SSE Stream",
+      "description": "The `/api/jobs/{job_id}/stream` endpoint polls the database every second for status changes, generating a high number of DB queries for each connected client.",
+      "scanner": "llm",
+      "file": "worker/api/main.py",
+      "line": null,
+      "suggestion": "Implement a publish/subscribe mechanism (e.g., Redis Pub/Sub, websockets) where the worker pushes updates, and the generator yields them without constant polling."
+    },
+    {
+      "id": "84adc8af-4763-4ac2-98cf-1ed8d8d8bb53",
+      "severity": "medium",
+      "title": "Duplicate Job Retrieval Logic",
+      "description": "Many endpoints repeat `job = db.get_job(job_id); if not job: raise HTTPException(404)`. This boilerplate could be extracted into a reusable dependency.",
+      "scanner": "llm",
+      "file": "worker/api/main.py",
+      "line": null,
+      "suggestion": "Create a FastAPI dependency (`def get_job_or_404(job_id: str = Path(...))`) that fetches the job and raises 404, and inject it with `Depends`."
+    },
+    {
+      "id": "f69d8d8a-7279-41cd-a95a-6859055b72bc",
+      "severity": "medium",
+      "title": "Potential SQL/NoSQL injection via unsanitised component/finding data",
+      "description": "Data extracted from the repository (component names, paths, scanner findings) is written directly to the database through helper functions like `db.create_component` and `db.create_finding`. If the database layer builds queries by string interpolation, an attacker could craft file names or component identifiers that alter the query.",
+      "scanner": "llm",
+      "file": "worker/analysis/engine.py",
+      "line": null,
+      "suggestion": "Ensure the DB layer always uses parameterised queries/ORM methods. Consider sanitising or escaping any user‑controlled strings before persisting."
+    },
+    {
+      "id": "90eab4c3-781b-4c82-90f6-81a81cb4f51e",
+      "severity": "medium",
+      "title": "Blocking git operation inside async method",
+      "description": "`Repo.clone_from` is a synchronous, blocking call executed inside the asynchronous `run` method. This blocks the event loop and may cause denial‑of‑service for concurrent jobs.",
+      "scanner": "llm",
+      "file": "worker/analysis/engine.py",
+      "line": null,
+      "suggestion": "Run the clone in a separate thread or process using `run_in_executor`, or refactor to a fully sync workflow for the cloning phase."
+    },
+    {
+      "id": "96b8a734-8dd6-4c65-913c-59efeea13942",
+      "severity": "medium",
+      "title": "Mix of sync and async APIs without proper handling",
+      "description": "Database calls (`db.*`) and scanner executions are presumed async (`await scanner.scan`) but many of them are likely synchronous. This inconsistency can cause hidden blocking and unexpected behavior.",
+      "scanner": "llm",
+      "file": "worker/analysis/engine.py",
+      "line": null,
+      "suggestion": "Standardise on either async or sync for DB and scanner interfaces. If they remain sync, wrap them with `run_in_executor` or refactor to async‑compatible libraries."
+    },
+    {
+      "id": "5a56d663-5a21-4d92-aec0-9ca93cede7b4",
+      "severity": "medium",
+      "title": "Progress calculation hard‑coded and error‑prone",
+      "description": "Progress percentages are manually set (0,5,8,10,15,…). The calculation in `_run_all_scanners` (`progress = 15 + int((i / scanner_count) * 15)`) can exceed the intended range and leads to non‑linear updates.",
+      "scanner": "llm",
+      "file": "worker/analysis/engine.py",
+      "line": null,
+      "suggestion": "Derive progress from the total number of steps dynamically, or use a dedicated progress manager that guarantees monotonic progression."
+    },
+    {
+      "id": "62b8e310-a20d-4884-b8d6-a6f41ee4992a",
+      "severity": "medium",
+      "title": "Overly broad content glob patterns may degrade build performance",
+      "description": "The `content` array uses recursive glob patterns (`./src/**/*.{ts,tsx}` etc.) that can match a large number of files, including files that do not contain Tailwind classes. This increases the time Tailwind spends scanning files on each build.",
+      "scanner": "llm",
+      "file": "web/tailwind.config.js",
+      "line": null,
+      "suggestion": "Limit the globs to directories that actually contain UI components or pages (e.g., `./components/**/*.{tsx,ts}`) and exclude test or story files using `!` patterns. Use an explicit `exclude` array if the project grows."
+    },
+    {
+      "id": "48b3cbaa-0cd9-40ca-8ae2-4542dc5fffad",
+      "severity": "medium",
+      "title": "Reducer lacks a default case",
+      "description": "If an unknown action type reaches `reducer`, the function falls off the end and returns `undefined`. This will corrupt `memoryState` and cause runtime errors the next time the state is accessed.",
+      "scanner": "llm",
+      "file": "web/src/hooks/use-toast.ts",
+      "line": null,
+      "suggestion": "Add a `default:` case that returns the current `state` unchanged, or throw a clear error for unexpected action types."
+    },
+    {
+      "id": "951fca8d-09a0-45c4-ae3e-007b4496e69e",
+      "severity": "medium",
+      "title": "Global mutable state without proper encapsulation",
+      "description": "`memoryState`, `listeners`, and `toastTimeouts` are module‑level mutable variables. They can be accessed and mutated from any imported module, making reasoning about state difficult and increasing the risk of accidental cross‑component interference.",
+      "scanner": "llm",
+      "file": "web/src/hooks/use-toast.ts",
+      "line": null,
+      "suggestion": "Encapsulate the store inside a React context or a dedicated singleton class, expose only the stable API (`useToast`, `toast`), and avoid exporting mutable structures."
+    },
+    {
+      "id": "5c94fb17-8fcb-4b45-87ef-77656a576282",
+      "severity": "medium",
+      "title": "Potential exposure of sensitive data to unauthenticated clients",
+      "description": "The component fetches `stats` and `jobs` directly from the client using `api.getStats` and `api.getJobs`. If the API does not enforce proper authentication/authorization, any user (including bots) can retrieve potentially sensitive information about code analysis results.",
+      "scanner": "llm",
+      "file": "web/src/app/page.tsx",
+      "line": null,
+      "suggestion": "Ensure the API endpoints verify authentication tokens and enforce role‑based access control. Consider moving the data fetching to a server component or `getServerSideProps`/`getStaticProps` so that sensitive data never reaches the client unless the user is authorized."
+    },
+    {
+      "id": "788ebb02-14dd-4e2f-b1cb-0337e371106e",
+      "severity": "medium",
+      "title": "No explicit error handling for API calls",
+      "description": "The component only checks loading states (`statsLoading`, `jobsLoading`). If a request fails, the UI will silently show empty data or stale content, which degrades user experience.",
+      "scanner": "llm",
+      "file": "web/src/app/page.tsx",
+      "line": null,
+      "suggestion": "Add `isError` checks from `useQuery` and render an error component or toast. Optionally provide a retry button."
+    },
+    {
+      "id": "0155011c-a5df-47d4-882f-b2c4a95f94ed",
+      "severity": "medium",
+      "title": "Potential Server‑Side Injection via jobId",
+      "description": "The `jobId` extracted from the URL is passed straight to backend endpoints. If the backend treats the value as part of a query string or SQL statement without proper sanitisation, it could lead to injection attacks.",
+      "scanner": "llm",
+      "file": "web/src/app/jobs/[id]/page.tsx",
+      "line": null,
+      "suggestion": "Validate and sanitise `jobId` on the client (e.g., ensure it matches an expected UUID/numeric pattern) and, more importantly, enforce strict validation on the server side."
+    },
+    {
+      "id": "3767992f-2e7e-4aa2-900b-112ae76a79ad",
+      "severity": "medium",
+      "title": "Excessive number of concurrent queries and refetch intervals",
+      "description": "Multiple `useQuery` hooks run with independent `refetchInterval` logic, which can cause a burst of network traffic (e.g., every 3‑5 seconds for status, progress, findings summary) even when the job is completed.",
+      "scanner": "llm",
+      "file": "web/src/app/jobs/[id]/page.tsx",
+      "line": null,
+      "suggestion": "Consolidate related data into fewer queries or disable intervals once the job reaches a terminal state. Consider using React Query's `dependent queries` and `staleTime` to reduce unnecessary polls."
+    },
+    {
+      "id": "f5656ee3-e274-481a-ae44-75f25179f3c5",
+      "severity": "medium",
+      "title": "Missing TypeScript strictness for API responses",
+      "description": "The API functions are imported without explicit typings for the returned shape, and the component relies on optional chaining (`job?.status`). This makes the code prone to runtime errors if the backend contract changes.",
+      "scanner": "llm",
+      "file": "web/src/app/jobs/[id]/page.tsx",
+      "line": null,
+      "suggestion": "Define and import proper TypeScript interfaces for each API response (e.g., `JobResponse`, `Component[]`, `Finding[]`) and use them in the `useQuery` generic parameters."
+    },
+    {
+      "id": "9bcd5148-dbfb-4402-a0d1-66df48199e6e",
+      "severity": "medium",
+      "title": "Cards array recreated on every render",
+      "description": "The `cards` constant is defined inside the component body, causing a new array and new object literals on each render. This forces React to treat each card as a new element, potentially breaking memoization of child components and causing unnecessary re‑renders.",
+      "scanner": "llm",
+      "file": "web/src/components/stats-cards.tsx",
+      "line": null,
+      "suggestion": "Wrap the cards definition in `useMemo(() => [...], [stats])` or extract it to a separate pure function. This stabilises object references between renders."
+    },
+    {
+      "id": "1baf93e2-1cb9-47ff-aee7-a0f7c1348563",
+      "severity": "medium",
+      "title": "Missing accessibility attributes for icons",
+      "description": "Icon components from `lucide-react` are rendered without `aria-label` or `role=\"img\"`. Screen readers will ignore them, reducing accessibility.",
+      "scanner": "llm",
+      "file": "web/src/components/stats-cards.tsx",
+      "line": null,
+      "suggestion": "Add an accessible label, e.g., `<card.icon aria-hidden=\"true\" className={...} />` and provide a visually hidden `<span>` with the card title if the icon conveys meaning."
+    },
+    {
+      "id": "038211b0-16c3-4d80-a505-6faf4a5c42b7",
+      "severity": "medium",
+      "title": "Interactive element nesting (button inside <Link>)",
+      "description": "The `JobCard` component wraps an entire card in a Next.js `<Link>` while also rendering `<button>` elements inside it. This creates nested interactive elements, which can lead to unexpected navigation when a button is clicked, potentially allowing an attacker to craft UI‑confusing pages (clickjacking) or cause accidental state‑changing requests.",
+      "scanner": "llm",
+      "file": "web/src/components/job-list.tsx",
+      "line": null,
+      "suggestion": "Separate navigation from action buttons. Either move the buttons outside the `<Link>` or stop propagation correctly and replace the outer `<Link>` with a non‑interactive container that handles click navigation only when the user clicks outside the buttons. Ensure the buttons have `type=\"button\"` and use `e.stopPropagation()` to prevent link navigation."
+    },
+    {
+      "id": "3824bf03-69ab-4499-af94-226f2fc20fac",
+      "severity": "medium",
+      "title": "Hard‑coded status strings and duplicated logic",
+      "description": "The list of running statuses is duplicated and compared using `includes`. This makes future changes error‑prone and hampers readability.",
+      "scanner": "llm",
+      "file": "web/src/components/job-list.tsx",
+      "line": null,
+      "suggestion": "Extract the status categories into a constant or enum in a shared utility file and reuse it throughout the app."
+    },
+    {
+      "id": "099fb4c5-705e-467e-a0e4-a9139e2fb0a9",
+      "severity": "medium",
+      "title": "Use of `any` in error handling",
+      "description": "The catch block for `handleDelete` casts the error to `any`, losing type safety and making it harder to reason about error shapes.",
+      "scanner": "llm",
+      "file": "web/src/components/job-list.tsx",
+      "line": null,
+      "suggestion": "Define a proper error type (e.g., `AxiosError`) or at least use `unknown` and narrow it safely before accessing `response`."
+    },
+    {
+      "id": "3f07b1b2-889b-48cb-876a-adaac115ab51",
+      "severity": "medium",
+      "title": "Potential exposure of sensitive API key in memory",
+      "description": "The Ollama API key entered by the user is kept in component state (`apiKey`) and only cleared on successful submission. If the dialog is cancelled or the component is unmounted before a successful request, the key remains in memory and could be accessed by other scripts running in the same page (e.g., a malicious third‑party script).",
+      "scanner": "llm",
+      "file": "web/src/components/new-job-dialog.tsx",
+      "line": null,
+      "suggestion": "Clear the `apiKey` state whenever the dialog is closed (both on cancel and on backdrop click). Consider using a more secure input handling pattern such as a ref that is not persisted in React state, or sending the key directly to the backend without storing it in component state."
+    },
+    {
+      "id": "ae5ae609-cd9c-4110-9835-245c1a09290b",
+      "severity": "medium",
+      "title": "Unused import",
+      "description": "`useEffect` is imported from React but never used, adding unnecessary bundle size and confusing readers.",
+      "scanner": "llm",
+      "file": "web/src/components/new-job-dialog.tsx",
+      "line": null,
+      "suggestion": "Remove the unused `useEffect` import."
+    },
+    {
+      "id": "b11e5931-0cbc-46a6-9fa0-e93b8f785ef8",
+      "severity": "medium",
+      "title": "Fragmented component state",
+      "description": "Separate `useState` calls for each form field make the component harder to maintain and increase re‑render granularity.",
+      "scanner": "llm",
+      "file": "web/src/components/new-job-dialog.tsx",
+      "line": null,
+      "suggestion": "Combine related fields into a single state object (e.g., `formData`) and update via a reducer or `setFormData(prev => ({...prev, field: value}))`."
+    },
+    {
+      "id": "1b8f1c51-a883-490a-83cf-6f90c43d8f4e",
+      "severity": "medium",
+      "title": "Missing explicit `aria` attributes for overlay",
+      "description": "While Radix Dialog handles most accessibility concerns, the custom `DialogOverlay` does not set `role=\"presentation\"` or `aria-hidden` attributes. Some screen readers may interpret the overlay as content, which can affect the modal experience.",
+      "scanner": "llm",
+      "file": "web/src/components/ui/dialog.tsx",
+      "line": null,
+      "suggestion": "Add `role=\"presentation\"` and/or `aria-hidden=\"true\"` to the overlay element, or rely on Radix's built‑in overlay component which already provides appropriate accessibility attributes."
+    },
+    {
+      "id": "1fb2c643-d809-4b97-9334-0a972d763eb4",
+      "severity": "medium",
+      "title": "Lack of explicit prop validation for `value`",
+      "description": "`value` is taken from the generic `ComponentPropsWithoutRef<typeof ProgressPrimitive.Root>` which includes many unrelated props. Relying on the consumer to pass a correct numeric value can lead to unexpected UI behaviour (negative or >100 values).",
+      "scanner": "llm",
+      "file": "web/src/components/ui/progress.tsx",
+      "line": null,
+      "suggestion": "Define a dedicated interface for the component props that explicitly lists `value?: number` (with default 0) and restricts other props if needed. Optionally clamp the value between 0 and 100 before rendering."
+    },
+    {
+      "id": "82a22804-7706-4a07-96ed-ed1276eff1c6",
+      "severity": "medium",
+      "title": "Prop forwarding without explicit typing reduces maintainability",
+      "description": "Using `{...props}` with `React.ComponentPropsWithoutRef<typeof ToastPrimitives.Root>` passes through every prop from the Radix component, making it hard to understand the component's public API and easy to unintentionally expose internal props.",
+      "scanner": "llm",
+      "file": "web/src/components/ui/toast.tsx",
+      "line": null,
+      "suggestion": "Define a dedicated prop interface for each wrapper component that lists only the intended public props (e.g., `open`, `onOpenChange`, `duration`, `className`, `variant`). Extend Radix prop types only for the needed fields and spread the rest selectively."
+    },
+    {
+      "id": "1b55d613-114d-4d2c-b0ec-aa3023aada84",
+      "severity": "medium",
+      "title": "Unrestricted spreading of HTML attributes",
+      "description": "Each component spreads the entire `props` object onto a native HTML element (`{...props}`). This includes dangerous properties such as `dangerouslySetInnerHTML`, `onError`, or any other attribute that could be supplied by a malicious caller. If a caller passes user‑controlled data via these props, it could lead to XSS or other injection attacks.",
+      "scanner": "llm",
+      "file": "web/src/components/ui/card.tsx",
+      "line": null,
+      "suggestion": "Whitelist only the props that are intentionally allowed (e.g., `onClick`, `role`, `aria-*`). Either destructure the allowed props and spread the rest onto a safe object, or use a utility like `filterHTMLProps`. Explicitly omit `dangerouslySetInnerHTML` and other high‑risk attributes."
+    },
+    {
+      "id": "9d400e0f-d00d-4981-915b-d6ca99e6d8ea",
+      "severity": "medium",
+      "title": "Missing explicit TypeScript typings for toast objects",
+      "description": "The `toasts` array is destructured without a defined interface, making the component rely on implicit `any` types. This reduces type safety and can hide bugs.",
+      "scanner": "llm",
+      "file": "web/src/components/ui/toaster.tsx",
+      "line": null,
+      "suggestion": "Define a `ToastData` interface (e.g., `{ id: string; title?: string; description?: string; action?: ReactNode; ... }`) and type the `useToast` hook return value accordingly."
+    },
+    {
+      "id": "ce76a605-c527-4e39-bb81-e8e57e879e25",
+      "severity": "low",
+      "title": "Vulnerability: CVE-2025-53643 in aiohttp",
+      "description": "AIOHTTP is an asynchronous HTTP client/server framework for asyncio and Python. Prior to version 3.12.14, the Python parser is vulnerable to a request smuggling vulnerability due to not parsing trailer sections of an HTTP request. If a pure Python version of aiohttp is installed (i.e. without the usual C extensions) or AIOHTTP_NO_EXTENSIONS is enabled, then an attacker may be able to execute a request smuggling attack to bypass certain firewalls or proxy protections. Version 3.12.14 contains a patch for this issue.",
+      "scanner": "trivy",
+      "file": "worker/requirements.txt",
+      "line": null,
+      "suggestion": null
+    },
+    {
+      "id": "3511360a-f70d-4c06-a2f5-f49d02d45994",
+      "severity": "low",
+      "title": "Misconfiguration: No HEALTHCHECK defined",
+      "description": "You should add HEALTHCHECK instruction in your docker container images to perform the health check on running containers.",
+      "scanner": "trivy",
+      "file": "web/Dockerfile",
+      "line": null,
+      "suggestion": null
+    },
+    {
+      "id": "6717cb5b-445a-4e43-89c0-fcbe63001e54",
+      "severity": "low",
+      "title": "Misconfiguration: No HEALTHCHECK defined",
+      "description": "You should add HEALTHCHECK instruction in your docker container images to perform the health check on running containers.",
+      "scanner": "trivy",
+      "file": "worker/Dockerfile",
+      "line": null,
+      "suggestion": null
+    },
+    {
+      "id": "7b68dbca-607a-410d-8daf-aea6b64ce01d",
+      "severity": "low",
+      "title": "Misconfiguration: No HEALTHCHECK defined",
+      "description": "You should add HEALTHCHECK instruction in your docker container images to perform the health check on running containers.",
+      "scanner": "trivy",
+      "file": "worker/Dockerfile.api",
+      "line": null,
+      "suggestion": null
+    },
+    {
+      "id": "253cda9a-d342-457e-bb5f-356c97b93069",
+      "severity": "low",
+      "title": "F401: `typing.Set` imported but unused",
+      "description": "`typing.Set` imported but unused",
+      "scanner": "ruff",
+      "file": "/app/repos/repo_886e07d4/worker/analysis/component_detector.py",
+      "line": 8,
+      "suggestion": null
+    },
+    {
+      "id": "fc07f16f-20dc-4753-bcec-0fe04469d1b8",
+      "severity": "low",
+      "title": "F401: `pathlib.Path` imported but unused",
+      "description": "`pathlib.Path` imported but unused",
+      "scanner": "ruff",
+      "file": "/app/repos/repo_886e07d4/worker/analysis/context_aware_analysis.py",
+      "line": 9,
+      "suggestion": null
+    },
+    {
+      "id": "f22e3b97-1303-4847-8e43-6879379a6099",
+      "severity": "low",
+      "title": "F841: Local variable `analysis` is assigned to but never used",
+      "description": "Local variable `analysis` is assigned to but never used",
+      "scanner": "ruff",
+      "file": "/app/repos/repo_886e07d4/worker/analysis/context_aware_analysis.py",
+      "line": 357,
+      "suggestion": null
+    },
+    {
+      "id": "dd691527-acb0-4ae8-83fd-8732dc9a7c36",
+      "severity": "low",
+      "title": "F401: `asyncio` imported but unused",
+      "description": "`asyncio` imported but unused",
+      "scanner": "ruff",
+      "file": "/app/repos/repo_886e07d4/worker/analysis/engine.py",
+      "line": 6,
+      "suggestion": null
+    },
+    {
+      "id": "b1cdd5c8-a4f3-49bb-b41b-b8790dd4c134",
+      "severity": "low",
+      "title": "F401: `typing.Any` imported but unused",
+      "description": "`typing.Any` imported but unused",
+      "scanner": "ruff",
+      "file": "/app/repos/repo_886e07d4/worker/analysis/engine.py",
+      "line": 10,
+      "suggestion": null
+    },
+    {
+      "id": "22422038-ae04-4e9c-80b9-c23445394e2d",
+      "severity": "low",
+      "title": "F401: `.context_aware_analysis.ContextAwareAnalyzer` imported but unused",
+      "description": "`.context_aware_analysis.ContextAwareAnalyzer` imported but unused",
+      "scanner": "ruff",
+      "file": "/app/repos/repo_886e07d4/worker/analysis/engine.py",
+      "line": 19,
+      "suggestion": null
+    },
+    {
+      "id": "5314e3cb-026d-4fa1-8ca8-b7174e024c9e",
+      "severity": "low",
+      "title": "F401: `typing.Any` imported but unused",
+      "description": "`typing.Any` imported but unused",
+      "scanner": "ruff",
+      "file": "/app/repos/repo_886e07d4/worker/api/main.py",
+      "line": 7,
+      "suggestion": null
+    },
+    {
+      "id": "b4a63f53-dbb1-475b-a485-aaa6ab774586",
+      "severity": "low",
+      "title": "F401: `json` imported but unused",
+      "description": "`json` imported but unused",
+      "scanner": "ruff",
+      "file": "/app/repos/repo_886e07d4/worker/scanners/base.py",
+      "line": 12,
+      "suggestion": null
+    },
+    {
+      "id": "6cd6180a-e5b5-4802-9ca9-8e4fae858e04",
+      "severity": "low",
+      "title": "B404: Consider possible security implications associated with the subprocess module.",
+      "description": "Consider possible security implications associated with the subprocess module.",
+      "scanner": "bandit",
+      "file": "/app/repos/repo_886e07d4/worker/scanners/base.py",
+      "line": 11,
+      "suggestion": null
+    },
+    {
+      "id": "5b23c6eb-393a-4f18-82c6-ec55a2c83e01",
+      "severity": "low",
+      "title": "B603: subprocess call - check for execution of untrusted input.",
+      "description": "subprocess call - check for execution of untrusted input.",
+      "scanner": "bandit",
+      "file": "/app/repos/repo_886e07d4/worker/scanners/base.py",
+      "line": 172,
+      "suggestion": null
+    },
+    {
+      "id": "58197dde-2d87-42b1-b005-930f5cfaef52",
+      "severity": "low",
+      "title": "B603: subprocess call - check for execution of untrusted input.",
+      "description": "subprocess call - check for execution of untrusted input.",
+      "scanner": "bandit",
+      "file": "/app/repos/repo_886e07d4/worker/scanners/base.py",
+      "line": 238,
+      "suggestion": null
+    },
+    {
+      "id": "db8859c2-eb10-47ae-8705-ea409138e5a7",
+      "severity": "low",
+      "title": "Potential exposure of sensitive configuration data",
+      "description": "The `config` dictionary is JSON‑serialized and stored in plaintext. If the configuration contains secrets (API keys, tokens), they will be readable by anyone with database access.",
+      "scanner": "llm",
+      "file": "worker/database.py",
+      "line": null,
+      "suggestion": "Either encrypt the configuration column before storage or ensure that no secret values are ever placed into the `config` field. Document the policy clearly."
+    },
+    {
+      "id": "8eebbe2a-c342-4369-a38e-d8b2d296881d",
+      "severity": "low",
+      "title": "Database connections are never closed",
+      "description": "`get_connection` creates a SQLite connection per thread and returns it via a context manager, but the connection object is kept alive in thread‑local storage for the lifetime of the thread. Over time this can exhaust file descriptors, especially in a worker pool that creates many short‑lived threads.",
+      "scanner": "llm",
+      "file": "worker/database.py",
+      "line": null,
+      "suggestion": "Implement a `close()` method on `Database` that iterates over stored thread‑local connections and calls `close()`. Optionally use a connection pool or call `self._local.connection.close()` when a thread finishes its work."
+    },
+    {
+      "id": "98d94651-24fb-44c9-a702-d8402bc27658",
+      "severity": "low",
+      "title": "Lack of explicit error handling for database operations",
+      "description": "All database errors propagate up as generic exceptions, making it hard for callers to distinguish transient errors (e.g., lock time‑outs) from programming mistakes.",
+      "scanner": "llm",
+      "file": "worker/database.py",
+      "line": null,
+      "suggestion": "Catch `sqlite3.Error` within the context manager, log useful information, and raise custom exceptions that callers can handle appropriately."
+    },
+    {
+      "id": "81c9d349-e524-4dd9-aaa5-9920a0ed3764",
+      "severity": "low",
+      "title": "Potential race conditions on concurrent updates",
+      "description": "Multiple threads may update the same job/component row concurrently (e.g., progress updates). SQLite’s default isolation level may cause lost updates because each `UPDATE` overwrites the entire row without checking for versioning.",
+      "scanner": "llm",
+      "file": "worker/database.py",
+      "line": null,
+      "suggestion": "Add optimistic concurrency control (e.g., a `revision` integer column) or use `UPDATE ... WHERE revision = ?` to ensure updates are not silently overwritten."
+    },
+    {
+      "id": "84adb51e-b79c-472a-a45b-39240dcbf9fa",
+      "severity": "low",
+      "title": "Hard‑coded absolute database path",
+      "description": "The script uses a fixed path (`/app/data/bullseye.db`). This reveals the internal filesystem layout and makes the script unusable in other environments. If the script is executed with elevated privileges it could unintentionally expose or modify a database that the caller should not have access to.",
+      "scanner": "llm",
+      "file": "worker/migrate_db.py",
+      "line": null,
+      "suggestion": "Make the path configurable via an environment variable, command‑line argument, or a config file and validate that the process has appropriate permissions before opening the DB."
+    },
+    {
+      "id": "2925ce4d-1a12-4290-925c-bc14fb207a47",
+      "severity": "low",
+      "title": "Insufficient permission checking before opening the database",
+      "description": "The script opens the SQLite file without checking file ownership or mode. If the script runs under a privileged user, it could read or overwrite a database that should be restricted.",
+      "scanner": "llm",
+      "file": "worker/migrate_db.py",
+      "line": null,
+      "suggestion": "Verify that the file is owned by the expected user and has restrictive permissions (e.g., 0600) before connecting, or run the script with a dedicated low‑privilege user."
+    },
+    {
+      "id": "dae344a4-d859-4461-93b3-e5e4ae62f30e",
+      "severity": "low",
+      "title": "Generic exception handling masks specific errors",
+      "description": "Catching `Exception` and only printing the message discards stack traces and makes debugging harder. It also treats all failures the same, even those that should abort the migration immediately.",
+      "scanner": "llm",
+      "file": "worker/migrate_db.py",
+      "line": null,
+      "suggestion": "Catch specific SQLite exceptions (e.g., `sqlite3.DatabaseError`) and re‑raise or log the full traceback. Use a logging framework instead of `print`."
+    },
+    {
+      "id": "d744349c-a92c-4b84-ac52-6d81a5edb581",
+      "severity": "low",
+      "title": "Missing context manager for SQLite connection",
+      "description": "The connection is manually closed in a finally block. Using a context manager (`with sqlite3.connect(...) as conn:`) would automatically handle commit/rollback and closing, reducing boilerplate and potential resource leaks.",
+      "scanner": "llm",
+      "file": "worker/migrate_db.py",
+      "line": null,
+      "suggestion": "Wrap the connection in a `with` statement and obtain the cursor via `conn.cursor()` inside that block."
+    },
+    {
+      "id": "d409ba75-ebd1-427c-aab9-0c41cc98b278",
+      "severity": "low",
+      "title": "Hard‑coded default values in schema definition",
+      "description": "Default values such as `branch TEXT DEFAULT 'main'` are baked into the migration. Changing defaults later would require another migration, and the script does not document the rationale.",
+      "scanner": "llm",
+      "file": "worker/migrate_db.py",
+      "line": null,
+      "suggestion": "Consider externalising defaults to a configuration layer or adding comments that explain why these defaults are chosen."
+    },
+    {
+      "id": "2a6d2f69-46c5-4d32-aa69-cefb5b85dafc",
+      "severity": "low",
+      "title": "Lack of authentication/authorization for tasks",
+      "description": "Celery tasks are callable by any client that can connect to the broker. No token, signature, or ACL checks are performed before executing `analyze_repository`, which could allow malicious users to trigger expensive analyses.",
+      "scanner": "llm",
+      "file": "worker/worker.py",
+      "line": null,
+      "suggestion": "Implement a lightweight authentication mechanism (e.g., signed payload, API key) that the task validates before proceeding, or configure Celery's `task_routes`/`queues` with restricted access."
+    },
+    {
+      "id": "24b71677-fdc0-451d-9a14-a14cf4c1bc35",
+      "severity": "low",
+      "title": "Return type inconsistency and missing type hints",
+      "description": "The task returns a dict but the function signature lacks a return type annotation, making static analysis less effective.",
+      "scanner": "llm",
+      "file": "worker/worker.py",
+      "line": null,
+      "suggestion": "Add a return type hint, e.g., `-> dict` or a `TypedDict` describing the expected keys."
+    },
+    {
+      "id": "ef0376ac-8e8a-490b-a474-59f4479573e8",
+      "severity": "low",
+      "title": "Sensitive data may be stored in plain‑text .env file",
+      "description": "The configuration loads from a `.env` file which, if checked into version control, could expose secrets like `ollama_api_key`.",
+      "scanner": "llm",
+      "file": "worker/config.py",
+      "line": null,
+      "suggestion": "Add `.env` to `.gitignore`, enforce secret management (e.g., Docker secrets, Vault), and document that the file must be protected."
+    },
+    {
+      "id": "f671e5bb-f03d-4da8-a3d6-85ccf332f9af",
+      "severity": "low",
+      "title": "Hard‑coded absolute filesystem paths",
+      "description": "Paths such as `/app/data/bullseye.db` and `/app/repos` are absolute and assume a specific container layout, limiting portability.",
+      "scanner": "llm",
+      "file": "worker/config.py",
+      "line": null,
+      "suggestion": "Allow these paths to be overridden via environment variables and consider using `Path` objects resolved relative to a base directory."
+    },
+    {
+      "id": "1c11a686-2b59-4a7f-b73a-fbedaca6a4db",
+      "severity": "low",
+      "title": "`extra = \"ignore\"` silently drops unexpected env vars",
+      "description": "Setting `extra = \"ignore\"` in the Pydantic config means miss‑spelled or unsupported env variables are discarded without warning, which can hide configuration errors.",
+      "scanner": "llm",
+      "file": "worker/config.py",
+      "line": null,
+      "suggestion": "Change to `extra = \"forbid\"` during development so misconfigurations raise an error, or add logging to report ignored variables."
+    },
+    {
+      "id": "4a87f425-0efb-47ab-a485-5c866be9b270",
+      "severity": "low",
+      "title": "Unbounded JSON parsing of external tool output",
+      "description": "The scanners read the entire stdout string from cargo tools and parse it with `json.loads`. A maliciously crafted cargo output could cause excessive memory consumption or CPU usage (DoS).",
+      "scanner": "llm",
+      "file": "worker/scanners/rust_scanners.py",
+      "line": null,
+      "suggestion": "Stream the JSON data when possible or impose size limits before parsing. Consider using a safe JSON parser that can handle extremely large inputs gracefully."
+    },
+    {
+      "id": "f232ea9f-93b2-4d0c-9dd9-a509e9c6206e",
+      "severity": "low",
+      "title": "Repeated version‑check logic",
+      "description": "Both scanners implement identical `is_available` and `get_version` methods that call `_run_command` with a hard‑coded argument list, duplicating code.",
+      "scanner": "llm",
+      "file": "worker/scanners/rust_scanners.py",
+      "line": null,
+      "suggestion": "Extract a shared helper in `BaseScanner` (e.g., `_run_and_parse_version`) to reduce duplication and improve maintainability."
+    },
+    {
+      "id": "6a4ea0a5-9b48-4100-aef0-82d42f9d321d",
+      "severity": "low",
+      "title": "Potential None values without safeguards",
+      "description": "When a Clippy message lacks spans, `primary_span` becomes an empty dict, leading to `None` being passed for line/column numbers to `ScannerFinding`. Depending on downstream handling, this could raise errors.",
+      "scanner": "llm",
+      "file": "worker/scanners/rust_scanners.py",
+      "line": null,
+      "suggestion": "Provide explicit defaults (e.g., `0`) or skip findings that lack location information, and document the behaviour."
+    },
+    {
+      "id": "53433324-03e1-4950-9d55-874efb1d1435",
+      "severity": "low",
+      "title": "Hard‑coded file path for Cargo‑audit findings",
+      "description": "`file_path` is always set to \"Cargo.toml\", which may be inaccurate for workspaces or when the vulnerable crate originates from a different manifest.",
+      "scanner": "llm",
+      "file": "worker/scanners/rust_scanners.py",
+      "line": null,
+      "suggestion": "Derive the actual manifest path from the `target_path` argument or from the audit output when available."
+    },
+    {
+      "id": "9ce61ad6-c9b0-402e-a0dc-88423e9811f6",
+      "severity": "low",
+      "title": "Hard‑coded `--exit-code 0` disables error signaling",
+      "description": "`build_command` forces gitleaks to exit with code 0 even when it encounters internal errors. This makes it impossible for the scanner to distinguish between a successful run with findings and a failure of the tool itself.",
+      "scanner": "llm",
+      "file": "worker/scanners/gitleaks.py",
+      "line": null,
+      "suggestion": "Remove the `--exit-code 0` flag or make it configurable. Propagate non‑zero exit codes as errors in `parse_output`."
+    },
+    {
+      "id": "a36fd611-fd29-4bfb-a828-7348d64ed339",
+      "severity": "low",
+      "title": "Limited error handling for subprocess failures",
+      "description": "`is_available` and `get_version` ignore `stderr` and only check the exit code. If the binary is present but crashes or prints useful error information to stderr, the caller gets no insight.",
+      "scanner": "llm",
+      "file": "worker/scanners/gitleaks.py",
+      "line": null,
+      "suggestion": "Log or return `stderr` when the exit code is non‑zero to aid debugging."
+    },
+    {
+      "id": "4f8d94cc-9a3e-40d2-b67b-62f636f8074a",
+      "severity": "low",
+      "title": "Magic numbers in severity mapping",
+      "description": "Entropy thresholds (4.5, 4.0, 3.5) are hard‑coded and lack documentation, making future adjustments error‑prone.",
+      "scanner": "llm",
+      "file": "worker/scanners/gitleaks.py",
+      "line": null,
+      "suggestion": "Define named constants or configuration values for these thresholds with explanatory comments."
+    },
+    {
+      "id": "75947cc1-6512-4732-a197-617b9eb692d5",
+      "severity": "low",
+      "title": "Missing type hints for `stdout`, `stderr`, `exit_code` in `parse_output`",
+      "description": "Method signature does not annotate parameter types, reducing readability and static analysis support.",
+      "scanner": "llm",
+      "file": "worker/scanners/gitleaks.py",
+      "line": null,
+      "suggestion": "Add type hints: `def parse_output(self, stdout: str, stderr: str, exit_code: int) -> List[ScannerFinding]:` (already present but ensure consistency across overridden methods)."
+    },
+    {
+      "id": "2be629b5-fdb3-451d-8bd7-deea527208a4",
+      "severity": "low",
+      "title": "Missing method docstrings and type hints for public methods",
+      "description": "Methods `is_available`, `get_version`, and `build_command` lack docstrings and explicit return type annotations, making the public API harder to understand and maintain.",
+      "scanner": "llm",
+      "file": "worker/scanners/trivy.py",
+      "line": null,
+      "suggestion": "Add comprehensive docstrings and type hints (e.g., `def is_available(self) -> bool:`) to improve readability and enable static analysis tools."
+    },
+    {
+      "id": "64cb6238-9e5c-4542-8885-bcd66990e339",
+      "severity": "low",
+      "title": "Potential KeyError when accessing nested misconfiguration metadata",
+      "description": "The line `misconfig.get(\"CauseMetadata\", {}).get(\"Code\", {}).get(\"Lines\", [{}])[0].get(\"Content\", \"\")` assumes that `Lines` is a list with at least one element. If Trivy returns an empty list, the default `[{}]` prevents an IndexError, but the subsequent `.get(\"Content\", \"\")` may mask missing data silently.",
+      "scanner": "llm",
+      "file": "worker/scanners/trivy.py",
+      "line": null,
+      "suggestion": "Explicitly check that the list is non‑empty before accessing `[0]` and log a warning if expected fields are absent."
+    },
+    {
+      "id": "91d01951-3266-42cf-9561-3c998eabab75",
+      "severity": "low",
+      "title": "Redundant conversion of command list to string for logging",
+      "description": "`command_str = \" \".join(command)` may misrepresent arguments that contain spaces or special characters, making logs harder to interpret.",
+      "scanner": "llm",
+      "file": "worker/scanners/base.py",
+      "line": null,
+      "suggestion": "Log the command list directly or use `shlex.join(command)` (Python 3.8+) to preserve quoting."
+    },
+    {
+      "id": "abefea34-0dc9-483f-be9f-225200994dfc",
+      "severity": "low",
+      "title": "`scan` uses deprecated `asyncio.get_event_loop()` pattern",
+      "description": "`asyncio.get_event_loop()` is discouraged in modern asyncio code; `asyncio.get_running_loop()` is preferred when called from a coroutine.",
+      "scanner": "llm",
+      "file": "worker/scanners/base.py",
+      "line": null,
+      "suggestion": "Replace with `loop = asyncio.get_running_loop()`."
+    },
+    {
+      "id": "f561f59e-6b02-4f7b-b7dd-51efcfb27b96",
+      "severity": "low",
+      "title": "Unsanitised URLs constructed from external data",
+      "description": "References URLs are built by concatenating raw identifiers (e.g., `item.get('FromLinter')` or `osv`) directly into strings. If an upstream tool returns a malformed identifier containing special characters, the resulting URL may be invalid or lead to unintended resources.",
+      "scanner": "llm",
+      "file": "worker/scanners/go_scanners.py",
+      "line": null,
+      "suggestion": "Encode identifiers before embedding them in URLs (e.g., using `urllib.parse.quote`) or validate that they match an expected pattern (alphanumeric, hyphens, underscores)."
+    },
+    {
+      "id": "7c59f42b-df46-4b3d-b10a-5720dcf568a1",
+      "severity": "low",
+      "title": "Inconsistent error handling for JSON parsing",
+      "description": "`GolangciLintScanner` and `GosecScanner` log a warning on `JSONDecodeError`, while `GovulncheckScanner` silently skips malformed lines. This inconsistency makes debugging harder and may hide data loss.",
+      "scanner": "llm",
+      "file": "worker/scanners/go_scanners.py",
+      "line": null,
+      "suggestion": "Adopt a uniform strategy: log the problematic line with context and optionally count skipped entries, so users can assess the impact."
+    },
+    {
+      "id": "1d0c12f3-5048-43be-9806-253d9cef40bf",
+      "severity": "low",
+      "title": "Hard‑coded timeout and severity/confidence thresholds",
+      "description": "Values such as `--timeout 5m` for golangci‑lint and fixed severity/confidence levels for gosec are embedded directly in the code, limiting configurability.",
+      "scanner": "llm",
+      "file": "worker/scanners/go_scanners.py",
+      "line": null,
+      "suggestion": "Expose these parameters via class attributes or configuration objects so they can be tuned without code changes."
+    },
+    {
+      "id": "f7f89866-843e-4389-b45b-8bb8c4f1e9a5",
+      "severity": "low",
+      "title": "Unrestricted memory consumption when parsing large Semgrep output",
+      "description": "`parse_output` reads the entire `stdout` string into memory and calls `json.loads` without any size checks. Very large scan results could exhaust memory and cause a denial‑of‑service.",
+      "scanner": "llm",
+      "file": "worker/scanners/semgrep.py",
+      "line": null,
+      "suggestion": "Stream the JSON output (e.g., use `ijson`) or impose a reasonable size limit before parsing. Emit a warning or truncate when the output exceeds the threshold."
+    },
+    {
+      "id": "4c05e046-bb96-44fd-b8e5-98cf9d30d0cc",
+      "severity": "low",
+      "title": "Information leakage via warning logs",
+      "description": "When JSON parsing fails the code logs `self.logger.warning(\"Failed to parse semgrep output\", error=str(e))`. The full error message (including potentially sensitive data from the scan) is written to logs, which may be collected insecurely.",
+      "scanner": "llm",
+      "file": "worker/scanners/semgrep.py",
+      "line": null,
+      "suggestion": "Sanitize or redact any potentially sensitive information before logging, or log only the exception type with a generic message."
+    },
+    {
+      "id": "9816cbb4-9476-4784-8835-4ba8a47bda36",
+      "severity": "low",
+      "title": "Missing handling of non‑zero exit codes",
+      "description": "`parse_output` processes `stdout` regardless of `exit_code`. If Semgrep fails (e.g., syntax errors, internal errors) the code may treat error messages as valid JSON and silently drop findings.",
+      "scanner": "llm",
+      "file": "worker/scanners/semgrep.py",
+      "line": null,
+      "suggestion": "Check `exit_code` before parsing; if non‑zero, capture `stderr` and raise an informative exception or surface the error to the caller."
+    },
+    {
+      "id": "b6feab2f-d24a-4b62-8919-53ddd04a2331",
+      "severity": "low",
+      "title": "Limited type annotations and documentation",
+      "description": "Private helper methods (`_map_severity`, `_map_category`, `_map_confidence`, `_extract_references`) lack return‑type annotations and docstrings, reducing readability and static‑analysis support.",
+      "scanner": "llm",
+      "file": "worker/scanners/semgrep.py",
+      "line": null,
+      "suggestion": "Add explicit type hints and concise docstrings for all public and private methods."
+    },
+    {
+      "id": "03c7b818-1125-493a-a240-cdfaa85c517a",
+      "severity": "low",
+      "title": "Magic numbers without explanation",
+      "description": "Numbers like `300` (timeout seconds) and `5000000` (max file size) appear without comments describing why those thresholds were chosen.",
+      "scanner": "llm",
+      "file": "worker/scanners/semgrep.py",
+      "line": null,
+      "suggestion": "Define named constants with explanatory comments, e.g., `DEFAULT_TIMEOUT_SECONDS = 300`."
+    },
+    {
+      "id": "94e6b57d-d758-446b-a2cd-7e27a4c0ea60",
+      "severity": "low",
+      "title": "Unvalidated language argument",
+      "description": "The `language` string is taken directly from caller input and used only for a dictionary lookup. While this does not introduce injection, an unexpected value could lead to silent omission of scanners, potentially causing a false sense of security if the caller assumes a scanner was run.",
+      "scanner": "llm",
+      "file": "worker/scanners/__init__.py",
+      "line": null,
+      "suggestion": "Validate `language` against an allow‑list and raise a clear exception or log a warning when an unsupported language is supplied. Optionally expose the list of supported languages through a constant."
+    },
+    {
+      "id": "b3bc6e2a-5309-479b-a892-824b4b0c34dd",
+      "severity": "low",
+      "title": "Potential path‑traversal exposure downstream",
+      "description": "The `repo_path` argument is passed unchanged to each scanner class. If a malicious caller can control `repo_path`, scanners that invoke external tools may be tricked into operating on unintended filesystem locations, leading to information disclosure or unintended command execution in the scanner implementations.",
+      "scanner": "llm",
+      "file": "worker/scanners/__init__.py",
+      "line": null,
+      "suggestion": "Sanitize or resolve `repo_path` to an absolute, canonical path (`repo_path = Path(repo_path).resolve()`) before forwarding it to scanners, and preferably restrict it to a whitelist of allowed root directories."
+    },
+    {
+      "id": "dc5aff20-0fcf-42a7-8b7a-c81a095ce181",
+      "severity": "low",
+      "title": "Mutable list objects returned from factories",
+      "description": "Both `get_universal_scanners` and `get_scanner_for_language` return new mutable lists each call, which is fine, but the internal mapping in `get_scanner_for_language` is a plain dictionary of pre‑instantiated lists. If a caller mutates the returned list, it only affects that call, but the dictionary still holds the original list objects, which could be unintentionally shared if the function were refactored to reuse them.",
+      "scanner": "llm",
+      "file": "worker/scanners/__init__.py",
+      "line": null,
+      "suggestion": "Create the list of scanner instances inside the function body (as already done) and avoid storing instantiated lists in a module‑level constant. If a registry is needed, store the class objects instead of instantiated scanners."
+    },
+    {
+      "id": "f187f313-cc04-4118-b561-e4d41a1afbd1",
+      "severity": "low",
+      "title": "`__all__` may expose symbols that are not imported",
+      "description": "The `__all__` list includes names such as `CargoAuditScanner` and `NpmAuditScanner` that are imported, but if any of those imports fail (e.g., missing optional dependency), importing this package will raise an ImportError, potentially breaking unrelated functionality.",
+      "scanner": "llm",
+      "file": "worker/scanners/__init__.py",
+      "line": null,
+      "suggestion": "Guard optional imports with try/except and only add successfully imported names to `__all__`, or document which scanners require extra dependencies."
+    },
+    {
+      "id": "c8b63c69-c626-4e72-916c-f19db722aa83",
+      "severity": "low",
+      "title": "Potential information leakage via `raw_output`",
+      "description": "Both scanners store the full raw JSON object from the external tool in the `raw_output` attribute of each finding. If findings are later serialized or logged without redaction, internal file paths, code snippets or other sensitive data could be exposed.",
+      "scanner": "llm",
+      "file": "worker/scanners/js_scanners.py",
+      "line": null,
+      "suggestion": "Redact or truncate sensitive fields before persisting or exposing findings, or store only the minimal data required for reporting."
+    },
+    {
+      "id": "ff8bffda-c26f-494a-b046-a5b602b1ab44",
+      "severity": "low",
+      "title": "Insufficient validation of `target_path` in `build_command`",
+      "description": "`target_path` is converted to a string and passed directly to the subprocess command. While the subprocess is invoked with a list (mitigating classic command‑injection), an attacker who can control `target_path` could cause the scanner to read arbitrary files or traverse directories, possibly leading to denial‑of‑service or unintended data exposure.",
+      "scanner": "llm",
+      "file": "worker/scanners/js_scanners.py",
+      "line": null,
+      "suggestion": "Validate that `target_path` is within the allowed project directory (e.g., resolve and compare with a known root) before using it."
+    },
+    {
+      "id": "4c7c5d00-b288-4d74-9b7c-41519137daf0",
+      "severity": "low",
+      "title": "Redundant `rule_name` assignment",
+      "description": "`rule_name` is set to the same value as `rule_id` in the ESLint scanner, which adds no extra information and may be confusing for downstream consumers.",
+      "scanner": "llm",
+      "file": "worker/scanners/js_scanners.py",
+      "line": null,
+      "suggestion": "Either remove `rule_name` from the finding or populate it with a more user‑friendly description if needed."
+    },
+    {
+      "id": "dba149cf-551f-4f04-83ad-21c2a690dc60",
+      "severity": "low",
+      "title": "Hard‑coded rule‑category lists",
+      "description": "Security, reliability and maintainability categories are determined from static lists inside `_map_category`. This makes the scanner brittle and hard to extend.",
+      "scanner": "llm",
+      "file": "worker/scanners/js_scanners.py",
+      "line": null,
+      "suggestion": "Externalize the mapping to a configuration file or use ESLint’s own rule metadata when available."
+    },
+    {
+      "id": "9678e9af-ff20-45c5-b24d-2ff649d87735",
+      "severity": "low",
+      "title": "Missing handling of empty or malformed fields",
+      "description": "Fields such as `msg.get(\"line\")`, `msg.get(\"endLine\")`, `msg.get(\"column\")` may be `None`. Passing `None` to the `ScannerFinding` constructor could cause type errors later if the downstream expects integers.",
+      "scanner": "llm",
+      "file": "worker/scanners/js_scanners.py",
+      "line": null,
+      "suggestion": "Provide sensible defaults (e.g., `0` or `-1`) or validate before constructing the finding."
+    },
+    {
+      "id": "b7e29d8d-4ba0-4c54-bb22-cb65edbff33f",
+      "severity": "low",
+      "title": "Limited error reporting on JSON decode failures",
+      "description": "When JSON parsing fails, the code only logs a warning and returns an empty list, discarding useful error information that could help the user understand why the scanner failed.",
+      "scanner": "llm",
+      "file": "worker/scanners/js_scanners.py",
+      "line": null,
+      "suggestion": "Include the original `stderr` output in the log message and optionally surface a higher‑level error to the caller."
+    },
+    {
+      "id": "c1503fd1-7b03-4a8a-9e47-fc581ba4f9de",
+      "severity": "low",
+      "title": "Insufficient error handling for tool failures",
+      "description": "When a scanner returns non‑JSON output (e.g., because the tool crashed), the code silently returns an empty finding list after logging a warning. The caller may assume a clean scan and miss a critical failure.",
+      "scanner": "llm",
+      "file": "worker/scanners/python_scanners.py",
+      "line": null,
+      "suggestion": "Propagate an explicit error or include a diagnostic finding indicating that the scan failed, so that upstream logic can react accordingly."
+    },
+    {
+      "id": "e9afc25c-c519-437c-8861-cf26684ed60f",
+      "severity": "low",
+      "title": "Magic strings and numbers scattered throughout the code",
+      "description": "Values such as `--ignore E501`, confidence scores, and exit‑code checks are embedded directly, reducing readability and maintainability.",
+      "scanner": "llm",
+      "file": "worker/scanners/python_scanners.py",
+      "line": null,
+      "suggestion": "Define them as module‑level constants with descriptive names."
+    },
+    {
+      "id": "86410acc-d267-4957-b815-10a59a7627d7",
+      "severity": "low",
+      "title": "Missing type hints for some internal helper methods",
+      "description": "Methods like `_map_severity`, `_map_category`, and `_map_cvss_severity` lack explicit return type annotations, which makes static analysis harder.",
+      "scanner": "llm",
+      "file": "worker/scanners/python_scanners.py",
+      "line": null,
+      "suggestion": "Add appropriate return type hints (e.g., `-> str`)."
+    },
+    {
+      "id": "1339a261-d60f-4439-93d1-9dde04e2706d",
+      "severity": "low",
+      "title": "Lack of Input Validation for Repository URL",
+      "description": "The `repo_url` field is accepted as‑is and later used by background workers to clone a repository. If the worker runs shell commands without proper sanitization, a malicious URL could cause command injection or path traversal.",
+      "scanner": "llm",
+      "file": "worker/api/main.py",
+      "line": null,
+      "suggestion": "Validate `repo_url` against a whitelist of allowed schemes (e.g., https, git) and optionally use a URL parsing library. Ensure downstream cloning uses safe libraries (e.g., GitPython) instead of shell `git clone` commands."
+    },
+    {
+      "id": "442037f5-883b-4424-8957-4ee58629c184",
+      "severity": "low",
+      "title": "Typo / Incomplete Return Statement in Report Endpoint",
+      "description": "The `get_job_report` endpoint ends with `return json.lo` – a syntax error that would raise an exception at runtime.",
+      "scanner": "llm",
+      "file": "worker/api/main.py",
+      "line": null,
+      "suggestion": "Replace with a proper JSON response, e.g., `return JSONResponse(content=report)` or `return report` if it is already a dict."
+    },
+    {
+      "id": "50412db1-5707-47ca-a50a-9554ff3182d0",
+      "severity": "low",
+      "title": "Missing Type Hints on Return Values",
+      "description": "All route functions return dynamically built dictionaries but lack explicit return type hints, reducing readability and static analysis support.",
+      "scanner": "llm",
+      "file": "worker/api/main.py",
+      "line": null,
+      "suggestion": "Add proper return type annotations matching the declared `response_model` (e.g., `-> JobStatus`)."
+    },
+    {
+      "id": "a8867d7e-3bd6-4962-a38b-6807cb5e0571",
+      "severity": "low",
+      "title": "Sensitive information logged in plain text",
+      "description": "The repository URL and potentially the `ollama_api_key` are included in log statements (`self.logger.info(\"Starting analysis\", repo=job[\"repo_url\"], model=self.model)`). This could expose credentials or private repo locations in log aggregation services.",
+      "scanner": "llm",
+      "file": "worker/analysis/engine.py",
+      "line": null,
+      "suggestion": "Redact or hash sensitive fields before logging. Apply a logging policy that omits API keys and private URLs."
+    },
+    {
+      "id": "58b0b519-4cac-41ba-8168-fb448ed10727",
+      "severity": "low",
+      "title": "Trailing incomplete line / typo in `_run_all_scanners`",
+      "description": "The file ends with a stray `se` token (`db.update_scanner_result(result_id, \"completed\", len(findings))\n                se`) indicating a copy‑paste error that would raise a syntax error if not truncated earlier.",
+      "scanner": "llm",
+      "file": "worker/analysis/engine.py",
+      "line": null,
+      "suggestion": "Remove the stray characters and ensure the function returns the accumulated findings correctly."
+    },
+    {
+      "id": "8a05bff6-12d5-47a3-a26e-5496119d0c81",
+      "severity": "low",
+      "title": "Missing type hints for many methods",
+      "description": "Only a few functions specify return types. Lack of explicit typing reduces IDE support and static analysis effectiveness.",
+      "scanner": "llm",
+      "file": "worker/analysis/engine.py",
+      "line": null,
+      "suggestion": "Add full type hints (including return types) for all public methods."
+    },
+    {
+      "id": "98d1de72-a836-4e4d-af28-be923082a7d8",
+      "severity": "low",
+      "title": "Potential arbitrary code execution if configuration file is tampered",
+      "description": "The file directly executes `require(\"tailwindcss-animate\")`. If an attacker can modify this file or its dependencies on the filesystem, they could inject malicious JavaScript that runs during the build process.",
+      "scanner": "llm",
+      "file": "web/tailwind.config.js",
+      "line": null,
+      "suggestion": "Restrict write permissions on the project configuration files, include the config in source‑control checks, and run a CI lint step that validates the content of `tailwind.config.js`. Consider loading plugins via a static import instead of a dynamic `require` if possible."
+    },
+    {
+      "id": "ab051dc4-348f-4ab1-967e-2606423a1e7d",
+      "severity": "low",
+      "title": "Duplicate or redundant content paths",
+      "description": "Both `./pages/**/*.{ts,tsx}` and `./src/**/*.{ts,tsx}` may overlap depending on project structure, causing the same files to be scanned twice.",
+      "scanner": "llm",
+      "file": "web/tailwind.config.js",
+      "line": null,
+      "suggestion": "Review the folder layout and remove any overlapping paths to avoid unnecessary scanning."
+    },
+    {
+      "id": "f21b487c-9db6-4516-ba67-9531d6ba17a1",
+      "severity": "low",
+      "title": "Missing JSDoc / documentation for custom theme tokens",
+      "description": "While the config is functional, there are no comments explaining the purpose of custom CSS variables (`--primary`, `--radius`, etc.), which can hurt maintainability for new developers.",
+      "scanner": "llm",
+      "file": "web/tailwind.config.js",
+      "line": null,
+      "suggestion": "Add brief comments above the `extend.colors`, `borderRadius`, and animation sections describing the design intent and where the corresponding CSS variables are defined."
+    },
+    {
+      "id": "0c7ffbb3-2958-4104-9852-5b43b860fcbd",
+      "severity": "low",
+      "title": "Predictable toast identifiers",
+      "description": "Toast IDs are generated by a simple incrementing counter (`genId`). An attacker who can guess or force a toast ID could call `dismiss(toastId)` and close a toast that they did not create, leading to a denial‑of‑service for legitimate UI notifications.",
+      "scanner": "llm",
+      "file": "web/src/hooks/use-toast.ts",
+      "line": null,
+      "suggestion": "Replace the counter with a cryptographically strong random ID (e.g., `crypto.randomUUID()` or `nanoid`) and keep the IDs opaque."
+    },
+    {
+      "id": "e613199d-d8f3-46f8-9941-0617234d20d7",
+      "severity": "low",
+      "title": "Potential DOM injection via toast content",
+      "description": "The toast props (`title`, `description`, `action`) are accepted as `React.ReactNode` without validation. If untrusted HTML strings are passed (e.g., from user input) they could be rendered as raw HTML via `dangerouslySetInnerHTML` elsewhere in the UI, causing XSS.",
+      "scanner": "llm",
+      "file": "web/src/hooks/use-toast.ts",
+      "line": null,
+      "suggestion": "Sanitize any HTML before it reaches the toast component or enforce that only safe React elements are passed. Prefer using plain strings and let the toast component escape content."
+    },
+    {
+      "id": "a5a2a1f1-b4ee-46ed-aa97-7412891e1206",
+      "severity": "low",
+      "title": "Arbitrary large toast removal delay",
+      "description": "`TOAST_REMOVE_DELAY` is set to 1,000,000 ms (~16 minutes). If a toast is never dismissed manually, timers will linger for a long time, consuming memory.",
+      "scanner": "llm",
+      "file": "web/src/hooks/use-toast.ts",
+      "line": null,
+      "suggestion": "Choose a more reasonable default (e.g., 5‑10 seconds) or make the delay configurable per toast."
+    },
+    {
+      "id": "3307d3cd-95c9-49e7-af76-082842deef7f",
+      "severity": "low",
+      "title": "Potential ID collision after Number.MAX_VALUE wraps",
+      "description": "`genId` wraps the counter when it reaches `Number.MAX_VALUE`. Although unlikely in practice, once wrapped IDs may repeat, causing React key collisions in the toast list.",
+      "scanner": "llm",
+      "file": "web/src/hooks/use-toast.ts",
+      "line": null,
+      "suggestion": "Use a UUID/random string generator that never repeats instead of a numeric counter."
+    },
+    {
+      "id": "7f08d1eb-01df-4eb5-9626-facfd456fa45",
+      "severity": "low",
+      "title": "Missing Content Security Policy (CSP) headers",
+      "description": "The layout renders HTML without explicitly setting CSP headers, which could allow injection of malicious scripts if other parts of the app inadvertently introduce unsafe content.",
+      "scanner": "llm",
+      "file": "web/src/app/layout.tsx",
+      "line": null,
+      "suggestion": "Configure CSP headers at the Next.js server level (e.g., using next-secure-headers or a custom middleware) to restrict allowed script sources and mitigate XSS risks."
+    },
+    {
+      "id": "71861f6f-fe1a-4dc9-b86d-397b08357ddf",
+      "severity": "low",
+      "title": "Hard‑coded dark mode class on <html>",
+      "description": "The `className=\"dark\"` forces dark mode for every user, limiting accessibility and user preference handling.",
+      "scanner": "llm",
+      "file": "web/src/app/layout.tsx",
+      "line": null,
+      "suggestion": "Implement a theme toggle or respect the user's system preference (e.g., using `className={theme}` with state or a context provider)."
+    },
+    {
+      "id": "f6253c7f-2047-416d-8f9f-b18543ac1fbf",
+      "severity": "low",
+      "title": "Unused import of `Metadata` type",
+      "description": "`Metadata` is imported only for typing `metadata`, which is fine, but if linting rules treat type‑only imports differently, it could be flagged as unnecessary.",
+      "scanner": "llm",
+      "file": "web/src/app/layout.tsx",
+      "line": null,
+      "suggestion": "Leave as is (type‑only import is harmless) or change to `import type { Metadata } from \"next\";` if not already type‑only."
+    },
+    {
+      "id": "0525d191-b8ba-41ad-b1dc-b160156147b4",
+      "severity": "low",
+      "title": "Refresh button can be abused to generate high request volume",
+      "description": "The manual refresh button (`onClick={() => refetchJobs()}`) triggers an immediate network request with no throttling or debounce. A malicious user could repeatedly click it to flood the backend.",
+      "scanner": "llm",
+      "file": "web/src/app/page.tsx",
+      "line": null,
+      "suggestion": "Add client‑side rate limiting (e.g., disable button for a short cooldown, debounce clicks) or rely on server‑side request‑rate protection."
+    },
+    {
+      "id": "7d6d14a3-5923-4325-8a24-a5de16579e0d",
+      "severity": "low",
+      "title": "Lack of error handling may leak internal error messages",
+      "description": "`useQuery` returns an `error` object, but the component never checks it. React Query may render default error messages that could expose stack traces or internal URLs.",
+      "scanner": "llm",
+      "file": "web/src/app/page.tsx",
+      "line": null,
+      "suggestion": "Capture `error` from `useQuery` and display a generic user‑friendly message. Log detailed errors securely on the server side only."
+    },
+    {
+      "id": "e46657a3-724c-4082-b41a-86d4ce3532aa",
+      "severity": "low",
+      "title": "Inline arrow functions cause unnecessary re‑creation on each render",
+      "description": "`onJobUpdate={() => refetchJobs()}` and the `onSuccess` prop create new functions on every render, which can cause child components to re‑render unnecessarily.",
+      "scanner": "llm",
+      "file": "web/src/app/page.tsx",
+      "line": null,
+      "suggestion": "Memoize callbacks with `useCallback` or pass the reference directly (`onJobUpdate={refetchJobs}`)."
+    },
+    {
+      "id": "63875e92-012c-4e49-ad50-e66ccaedfa92",
+      "severity": "low",
+      "title": "Frequent polling intervals may be wasteful",
+      "description": "Jobs are polled every 5 seconds and stats every 10 seconds for every client, potentially scaling poorly under load.",
+      "scanner": "llm",
+      "file": "web/src/app/page.tsx",
+      "line": null,
+      "suggestion": "Evaluate whether real‑time updates are required. Consider using WebSockets, Server‑Sent Events, or increase the interval based on user activity."
+    },
+    {
+      "id": "1b403bef-c598-4c8d-ad52-d48ac84ed138",
+      "severity": "low",
+      "title": "Lack of error handling for failed queries",
+      "description": "If any of the `useQuery` calls fail (network error, 403/404, etc.), the component renders nothing special; it may keep showing the loading UI or a partially populated UI, leaking internal error details if the API returns them.",
+      "scanner": "llm",
+      "file": "web/src/app/jobs/[id]/page.tsx",
+      "line": null,
+      "suggestion": "Add `isError` checks for each query and render a user‑friendly error message. Avoid displaying raw error objects."
+    },
+    {
+      "id": "a0fae346-25a2-4be2-91af-2fec886377f1",
+      "severity": "low",
+      "title": "Large JSX block without component extraction",
+      "description": "The page renders a very large JSX tree (progress bar, status detail, findings summary, tabs, etc.) inside a single component, reducing readability and making testing harder.",
+      "scanner": "llm",
+      "file": "web/src/app/jobs/[id]/page.tsx",
+      "line": null,
+      "suggestion": "Extract logical sections (e.g., `ProgressBar`, `StatusDetail`, `FindingsSummaryBar`, `Tabs`, `ReportViewer`) into separate memoised functional components."
+    },
+    {
+      "id": "7baab28b-546b-4d2e-a44e-5c17c8366a15",
+      "severity": "low",
+      "title": "Potential memory leak if `subscribeToJobStatus` fails to return a cleanup function",
+      "description": "The effect assumes `subscribeToJobStatus` returns a function to unsubscribe. If the library changes and returns `undefined`, the effect will return `undefined`, which is acceptable, but a defensive check would be safer.",
+      "scanner": "llm",
+      "file": "web/src/app/jobs/[id]/page.tsx",
+      "line": null,
+      "suggestion": "Verify that `subscribeToJobStatus` always returns a cleanup function or wrap the return in a conditional: `return typeof unsubscribe === 'function' ? unsubscribe : undefined;`."
+    },
+    {
+      "id": "2fc1bad1-fbb4-4f72-89d1-5b4ec1885d8e",
+      "severity": "low",
+      "title": "Untrusted data displayed without explicit type enforcement",
+      "description": "The component renders values coming from the `stats` prop directly into the DOM. If the API were compromised and returned non‑numeric strings containing malicious markup, React would safely escape it, but the lack of explicit runtime validation could allow unexpected data types to be shown (e.g., NaN, Infinity) which might confuse users or trigger UI bugs.",
+      "scanner": "llm",
+      "file": "web/src/components/stats-cards.tsx",
+      "line": null,
+      "suggestion": "Validate that every value is a finite number before using it, e.g., `Number.isFinite(stats?.jobs?.total) ? stats.jobs.total : 0`. Consider using a TypeScript type guard or runtime schema validation (zod, yup) for the API response."
+    },
+    {
+      "id": "afd733a2-bb0d-46fa-af97-c248a8eef2ee",
+      "severity": "low",
+      "title": "Key prop relies on mutable title string",
+      "description": "Using `card.title` as the React key works for the current static list, but if titles change or duplicate titles are introduced, key collisions could appear.",
+      "scanner": "llm",
+      "file": "web/src/components/stats-cards.tsx",
+      "line": null,
+      "suggestion": "Prefer a stable, unique identifier (e.g., a short `id` field) for each card definition."
+    },
+    {
+      "id": "403462be-8cfd-4f91-a573-68b43900378c",
+      "severity": "low",
+      "title": "Lack of explicit type for the cards array",
+      "description": "`cards` is inferred as `any[]` because its shape is not typed, which reduces TypeScript safety for future modifications.",
+      "scanner": "llm",
+      "file": "web/src/components/stats-cards.tsx",
+      "line": null,
+      "suggestion": "Define an interface, e.g., `interface CardDef { title: string; value: number; icon: Icon; color: string; bgColor: string; }` and type the array as `CardDef[]`."
+    },
+    {
+      "id": "659b8f43-eaeb-422d-a892-20ff9610c108",
+      "severity": "low",
+      "title": "No handling for API error state",
+      "description": "The component only switches between a loading skeleton and the numeric value. If the API fails and `stats` is `undefined`, the UI silently shows zeros, which may be misleading.",
+      "scanner": "llm",
+      "file": "web/src/components/stats-cards.tsx",
+      "line": null,
+      "suggestion": "Introduce an `error` prop or detect a missing/invalid `stats` object and render an explicit error message or fallback UI."
+    },
+    {
+      "id": "12f68d00-1d5b-4986-bece-e2f6983fd680",
+      "severity": "low",
+      "title": "Missing validation of job data before use",
+      "description": "The component accesses `job.findings_count.total` and calls `job.status.toLowerCase()` without guarding against `undefined` or malformed values. If the API returns unexpected data, this could cause runtime errors that might be exploitable for denial‑of‑service.",
+      "scanner": "llm",
+      "file": "web/src/components/job-list.tsx",
+      "line": null,
+      "suggestion": "Add defensive checks, e.g., `const totalFindings = job.findings_count?.total ?? 0;` and `const status = (job.status || '').toLowerCase();`."
+    },
+    {
+      "id": "5fffde09-c9b9-4cff-a868-b7d36d8c2305",
+      "severity": "low",
+      "title": "Synchronous `confirm` and `alert` dialogs",
+      "description": "Relying on native browser dialogs blocks the UI and provides a poor user experience. They also cannot be styled to match the application.",
+      "scanner": "llm",
+      "file": "web/src/components/job-list.tsx",
+      "line": null,
+      "suggestion": "Replace with a custom modal component that returns a promise and integrates with the app’s design system."
+    },
+    {
+      "id": "f1a5c7df-b767-4a13-a101-b7697e52e4c2",
+      "severity": "low",
+      "title": "Missing `type=\"button\"` attribute on `<button>` elements",
+      "description": "Without an explicit `type`, a button inside a form could act as a submit button, leading to unintended form submissions if this component is ever placed inside a `<form>`.",
+      "scanner": "llm",
+      "file": "web/src/components/job-list.tsx",
+      "line": null,
+      "suggestion": "Add `type=\"button\"` to all button elements."
+    },
+    {
+      "id": "2ba9055e-3717-416f-8ccd-9dabf2afbb34",
+      "severity": "low",
+      "title": "Unvalidated repository URL may lead to server‑side misuse",
+      "description": "The component only validates the URL client‑side (`type=\"url\"` and `required`). If the backend does not perform its own validation, a malicious user could submit an arbitrary URL that triggers SSRF or other attacks on the server.",
+      "scanner": "llm",
+      "file": "web/src/components/new-job-dialog.tsx",
+      "line": null,
+      "suggestion": "Ensure server‑side validation of `repo_url`. Optionally add client‑side regex to limit accepted domains (e.g., GitHub, GitLab) and provide clearer error messages."
+    },
+    {
+      "id": "10e4df50-791c-4f92-bf56-6fae4e7ca8ba",
+      "severity": "low",
+      "title": "Password field autocomplete attribute not optimal",
+      "description": "The API key field uses `autoComplete=\"off\"`, which modern browsers may ignore, potentially allowing the key to be autofilled or stored.",
+      "scanner": "llm",
+      "file": "web/src/components/new-job-dialog.tsx",
+      "line": null,
+      "suggestion": "Use `autoComplete=\"new-password\"` or a custom attribute to better hint browsers not to store the value."
+    },
+    {
+      "id": "bad159a2-7c55-4e21-a3b3-71651ec3d73f",
+      "severity": "low",
+      "title": "Repeated Tailwind class strings",
+      "description": "Many input elements duplicate the same set of Tailwind classes, leading to verbosity and higher risk of inconsistencies.",
+      "scanner": "llm",
+      "file": "web/src/components/new-job-dialog.tsx",
+      "line": null,
+      "suggestion": "Extract the common class list into a constant or a component (e.g., `<TextInput />`) to improve DRYness."
+    },
+    {
+      "id": "defad1ff-c54e-4c1b-ac88-36067cebfe75",
+      "severity": "low",
+      "title": "Missing error handling for model fetch",
+      "description": "`useQuery` for models does not handle loading or error states, so the UI may render an empty dropdown or crash if the request fails.",
+      "scanner": "llm",
+      "file": "web/src/components/new-job-dialog.tsx",
+      "line": null,
+      "suggestion": "Add `isLoading` and `isError` checks and display a spinner or fallback message for the model list."
+    },
+    {
+      "id": "b42b9a8d-f63a-4020-bef6-6ab433dd064f",
+      "severity": "low",
+      "title": "Dialog does not reset form on cancellation",
+      "description": "When the user clicks the Cancel button or the backdrop, the form fields (including the trimmed API key) remain populated the next time the dialog opens.",
+      "scanner": "llm",
+      "file": "web/src/components/new-job-dialog.tsx",
+      "line": null,
+      "suggestion": "Clear all form state when the dialog is closed (e.g., call a `resetForm()` function in the cancel handler)."
+    },
+    {
+      "id": "d80b9c89-a865-4978-9504-a4cbf23e85f8",
+      "severity": "low",
+      "title": "Unrestricted prop forwarding can enable DOM‑based injection",
+      "description": "The components forward all received `props` (e.g., `...props`) directly onto the underlying DOM elements. If a caller passes a prop such as `dangerouslySetInnerHTML`, `onClick` with malicious code, or a crafted `style` attribute, it will be rendered without validation. This is not a direct server‑side vulnerability, but it can enable client‑side script injection when the component is used with untrusted data.",
+      "scanner": "llm",
+      "file": "web/src/components/ui/dialog.tsx",
+      "line": null,
+      "suggestion": "Validate or whitelist allowed props before spreading them, or explicitly type the component props to exclude dangerous attributes. At minimum, document that only safe props should be passed and consider using TypeScript utility types (e.g., `Omit<React.HTMLAttributes<...>, 'dangerouslySetInnerHTML'>`)."
+    },
+    {
+      "id": "57c0380d-4e3e-4523-a468-ff5ddcf5108a",
+      "severity": "low",
+      "title": "Potential bundle size increase from importing the entire `lucide-react` icon set",
+      "description": "The file imports `{ X }` from `lucide-react`. If the project's bundler is not configured for tree‑shaking, this could pull in the whole icon library.",
+      "scanner": "llm",
+      "file": "web/src/components/ui/dialog.tsx",
+      "line": null,
+      "suggestion": "Ensure the bundler (e.g., webpack, Vite, Next.js) is set to tree‑shake or import the icon directly from its file path (`lucide-react/dist/icons/x`)."
+    },
+    {
+      "id": "12cb303d-39b1-4a7f-84ee-a06d1e0ec1a3",
+      "severity": "low",
+      "title": "Redundant re‑export of `DialogClose`",
+      "description": "`DialogClose` is imported from `@radix-ui/react-dialog` and re‑exported, yet the component also renders its own close button within `DialogContent`. This can cause confusion about which close element should be used.",
+      "scanner": "llm",
+      "file": "web/src/components/ui/dialog.tsx",
+      "line": null,
+      "suggestion": "Either document the intended usage clearly or remove the redundant export if it is not needed elsewhere."
+    },
+    {
+      "id": "ff5b5457-b696-42fb-ae45-81a094c9fa5b",
+      "severity": "low",
+      "title": "Potential CSS injection via unvalidated `value` prop",
+      "description": "The component builds an inline `transform` style string using the `value` prop (`translateX(-${100 - (value || 0)}%)`). If a malicious non‑numeric string is passed, JavaScript will coerce it to `NaN`, which is not a security breach, but React does not sanitize the resulting string. While the risk is minimal because the value is expected to be numeric and the transform property cannot execute script, a deliberately crafted value could produce malformed CSS that may affect layout.",
+      "scanner": "llm",
+      "file": "web/src/components/ui/progress.tsx",
+      "line": null,
+      "suggestion": "Validate that `value` is a finite number before using it in the style string, e.g., `const safeValue = Number.isFinite(value) ? value : 0;` and then build the transform using `safeValue`. Consider using `width` instead of a transform for clearer semantics."
+    },
+    {
+      "id": "cf7e43b5-f430-4398-82b6-0c60d480e8f4",
+      "severity": "low",
+      "title": "Component `displayName` assignment may be undefined",
+      "description": "`Progress.displayName = ProgressPrimitive.Root.displayName` copies the display name from the underlying Radix component, which could be undefined, resulting in an unnamed component in React DevTools.",
+      "scanner": "llm",
+      "file": "web/src/components/ui/progress.tsx",
+      "line": null,
+      "suggestion": "Set a static display name, e.g., `Progress.displayName = 'Progress'`, to guarantee a meaningful name in debugging tools."
+    },
+    {
+      "id": "2dd2abca-e8ab-4965-917f-eea3107ab0d8",
+      "severity": "low",
+      "title": "Inline style object recreated on every render",
+      "description": "The `style` prop object is re‑created each render, causing unnecessary shallow prop changes for the child `Indicator` component.",
+      "scanner": "llm",
+      "file": "web/src/components/ui/progress.tsx",
+      "line": null,
+      "suggestion": "Memoize the style object with `useMemo` or compute the transform value once and pass it as a string constant."
+    },
+    {
+      "id": "b0347673-81a7-4c66-81b0-ab750349d44f",
+      "severity": "low",
+      "title": "Unvalidated `type` prop may allow unexpected input behaviours",
+      "description": "The component forwards the `type` attribute directly from props to the native <input>. While this is standard, passing an unexpected or malformed value (e.g., `type=\"<script>\"`) could cause the browser to fallback to the default type or behave unpredictably. No sanitisation is performed.",
+      "scanner": "llm",
+      "file": "web/src/components/ui/input.tsx",
+      "line": null,
+      "suggestion": "Validate the `type` prop against an explicit whitelist of allowed input types (e.g., 'text', 'email', 'password', etc.) or provide a sensible default such as `type='text'` when an unsupported value is supplied."
+    },
+    {
+      "id": "221e581a-b4cc-4686-a3b7-a1ecbe6a0e15",
+      "severity": "low",
+      "title": "Missing default value for `type` prop",
+      "description": "If a consumer omits the `type` attribute, the rendered <input> will have `type={undefined}`, which results in the browser treating it as a plain text input but may generate a React warning about an uncontrolled prop.",
+      "scanner": "llm",
+      "file": "web/src/components/ui/input.tsx",
+      "line": null,
+      "suggestion": "Assign a default type (`type = 'text'`) either via defaultProps or by destructuring with a fallback: `({ className, type = 'text', ...props }, ref)`."
+    },
+    {
+      "id": "ad740ed5-1e0c-4c3f-bf4b-a56dc759ccec",
+      "severity": "low",
+      "title": "Potential over‑exposure of the spread `props`",
+      "description": "All remaining props are spread onto the <input> without restriction, which could unintentionally forward unwanted attributes (e.g., `style`, `data-*`, or even React internal props) and make the component harder to audit.",
+      "scanner": "llm",
+      "file": "web/src/components/ui/input.tsx",
+      "line": null,
+      "suggestion": "Consider using a whitelist or TypeScript utility to explicitly pick allowed HTML attributes, or at least document that any extra props are intentionally forwarded."
+    },
+    {
+      "id": "0a7df709-4ab8-4aa4-a68b-721377107f8a",
+      "severity": "low",
+      "title": "Lack of explicit PropTypes or runtime validation",
+      "description": "While TypeScript provides compile‑time safety, the component does not include PropTypes for runtime checks, which could be useful when the library is consumed by plain JavaScript projects.",
+      "scanner": "llm",
+      "file": "web/src/components/ui/input.tsx",
+      "line": null,
+      "suggestion": "Add `Input.propTypes = { ... }` if the package is intended for mixed TS/JS consumption, or rely on comprehensive TypeScript documentation."
+    },
+    {
+      "id": "4d247912-f28d-4453-ab3c-1c458e62b975",
+      "severity": "low",
+      "title": "Inconsistent displayName assignment for AccordionTrigger",
+      "description": "The component sets `AccordionTrigger.displayName` to `AccordionPrimitive.Trigger.displayName`, which may be undefined or unintentionally duplicate another component's name. This can make debugging and React DevTools identification harder.",
+      "scanner": "llm",
+      "file": "web/src/components/ui/accordion.tsx",
+      "line": null,
+      "suggestion": "Assign an explicit string, e.g., `AccordionTrigger.displayName = \"AccordionTrigger\";`."
+    },
+    {
+      "id": "b09226a5-10a0-4b30-9ccd-c1066d6c88bc",
+      "severity": "low",
+      "title": "Prop spreading without explicit whitelist",
+      "description": "All remaining props are spread onto the underlying Radix components (`{...props}`). While this is convenient, it can unintentionally forward unsafe HTML attributes or event handlers if the component is mis‑used.",
+      "scanner": "llm",
+      "file": "web/src/components/ui/accordion.tsx",
+      "line": null,
+      "suggestion": "Consider defining a whitelist of allowed props or using TypeScript utility types to restrict what can be passed, especially if the component will be used by third‑party code."
+    },
+    {
+      "id": "1cf3363b-59b2-4f32-bebc-21d34b78da3c",
+      "severity": "low",
+      "title": "Missing explicit typing for children",
+      "description": "The forward‑ref components rely on `ComponentPropsWithoutRef` which includes an optional `children` prop, but the signatures do not annotate `children` as `React.ReactNode`. This can lead to less clear IntelliSense for consumers.",
+      "scanner": "llm",
+      "file": "web/src/components/ui/accordion.tsx",
+      "line": null,
+      "suggestion": "Add `children?: React.ReactNode` to the prop destructuring or annotate the generic with `React.PropsWithChildren` for clearer type expectations."
+    },
+    {
+      "id": "48f87883-4845-4809-b27b-69dafec41777",
+      "severity": "low",
+      "title": "Unrestricted prop spreading",
+      "description": "All incoming props are spread onto the <textarea> element without any whitelist. While React sanitises most HTML attributes, a malicious consumer could pass unexpected attributes (e.g., `onClick`, `data-*`, or future dangerously‑named props) that may affect component behaviour or downstream security policies.",
+      "scanner": "llm",
+      "file": "web/src/components/ui/textarea.tsx",
+      "line": null,
+      "suggestion": "Consider explicitly listing allowed props or using a prop‑filtering utility. At minimum, document which props are expected and safe to pass."
+    },
+    {
+      "id": "aaf3c37a-e698-45db-91af-2bd2cede2896",
+      "severity": "low",
+      "title": "Missing default export",
+      "description": "Only a named export is provided. In some codebases this can lead to inconsistent import styles and potential tree‑shaking issues.",
+      "scanner": "llm",
+      "file": "web/src/components/ui/textarea.tsx",
+      "line": null,
+      "suggestion": "Add `export default Textarea;` if the project prefers default exports, or ensure the naming convention is documented."
+    },
+    {
+      "id": "4ecfe482-6968-469b-942e-84ed6727c43c",
+      "severity": "low",
+      "title": "No explicit accessibility (ARIA) handling",
+      "description": "The component does not enforce any ARIA attributes (e.g., `aria-label`, `aria-describedby`). If used without an associated <label>, screen‑reader users may have a poor experience.",
+      "scanner": "llm",
+      "file": "web/src/components/ui/textarea.tsx",
+      "line": null,
+      "suggestion": "Document that a corresponding <label> should be used, or optionally accept an `ariaLabel` prop and apply it to the textarea."
+    },
+    {
+      "id": "468ffe86-0524-4490-95c5-f74d64400c23",
+      "severity": "low",
+      "title": "Unrestricted prop forwarding can enable XSS via dangerouslySetInnerHTML",
+      "description": "All components forward the full `props` object to the underlying Radix element (`{...props}`). If a caller passes a prop such as `dangerouslySetInnerHTML` or any other DOM attribute that can inject HTML, the toast will render it without sanitisation, potentially leading to cross‑site scripting. The component itself does not validate or filter forwarded props.",
+      "scanner": "llm",
+      "file": "web/src/components/ui/toast.tsx",
+      "line": null,
+      "suggestion": "Explicitly pick only the props that are required for the toast (e.g., `open`, `onOpenChange`, `duration`, etc.) or add a whitelist/validation step that strips dangerous props like `dangerouslySetInnerHTML`. Document that arbitrary HTML injection is not supported."
+    },
+    {
+      "id": "84e9e221-a133-4ec1-b8e0-9c9bd7b150ff",
+      "severity": "low",
+      "title": "Custom non‑standard attribute `toast-close` may cause React warnings or be mis‑interpreted",
+      "description": "The `ToastClose` component adds a `toast-close=\"\"` attribute, which is not a standard HTML attribute. While React will render it as a custom attribute, some browsers or security scanners could flag unknown attributes as potential data leakage points.",
+      "scanner": "llm",
+      "file": "web/src/components/ui/toast.tsx",
+      "line": null,
+      "suggestion": "If the attribute is required for internal styling or JS, rename it to a data attribute (e.g., `data-toast-close`) to follow HTML standards and avoid warnings."
+    },
+    {
+      "id": "455328e6-0469-4aec-960b-123917e6cbcc",
+      "severity": "low",
+      "title": "Missing `React.memo` on static components",
+      "description": "Components such as `ToastViewport`, `ToastTitle`, `ToastDescription`, and `ToastClose` are pure and receive only primitive props. They will re‑render whenever a parent re‑renders even if their props have not changed.",
+      "scanner": "llm",
+      "file": "web/src/components/ui/toast.tsx",
+      "line": null,
+      "suggestion": "Wrap these components with `React.memo` (or `React.memo` the whole forwardRef) to prevent unnecessary re‑renders, especially when the toast system is used frequently."
+    },
+    {
+      "id": "a3479f43-f725-4ce7-ac07-29e29ae037a6",
+      "severity": "low",
+      "title": "Hard‑coded Tailwind utility strings reduce themability",
+      "description": "Styling strings are embedded directly in the components (e.g., `border bg-background text-foreground`). Changing the design system requires editing many files.",
+      "scanner": "llm",
+      "file": "web/src/components/ui/toast.tsx",
+      "line": null,
+      "suggestion": "Consider moving recurring utility groups to a separate constant or theme file, or use the `cva` variants exclusively for all style variations, keeping the component markup clean."
+    },
+    {
+      "id": "c85133b0-9ead-429d-abe3-41fcb8e756a9",
+      "severity": "low",
+      "title": "Potential misuse of ref type for CardTitle",
+      "description": "The `CardTitle` component is typed as `React.forwardRef<HTMLParagraphElement, ...>` but renders an `<h3>` element. This creates a type mismatch and could cause runtime errors when a ref is expected to point to a `<h3>` (HTMLHeadingElement) instead of a `<p>`.",
+      "scanner": "llm",
+      "file": "web/src/components/ui/card.tsx",
+      "line": null,
+      "suggestion": "Change the ref generic to `HTMLHeadingElement` (or `HTMLHeadingElement` union) to match the rendered element, e.g., `React.forwardRef<HTMLHeadingElement, React.HTMLAttributes<HTMLHeadingElement>>`."
+    },
+    {
+      "id": "3a30ffaa-1392-4cde-b544-b2487d1f3995",
+      "severity": "low",
+      "title": "Inconsistent generic types across components",
+      "description": "Most components correctly match the ref type with the rendered HTML element, but CardTitle is inconsistent (see security issue above). Maintaining consistent typings improves readability and prevents subtle bugs.",
+      "scanner": "llm",
+      "file": "web/src/components/ui/card.tsx",
+      "line": null,
+      "suggestion": "Align the generic type parameters for all components with the actual DOM element they render."
+    },
+    {
+      "id": "6a9ef095-0775-4170-b7a7-11e573e2426e",
+      "severity": "low",
+      "title": "Missing explicit `propTypes` or TypeScript interface for custom props",
+      "description": "The components rely solely on `React.HTMLAttributes<...>` which is fine for generic HTML attributes, but if any custom props are added in the future they would be hidden. Defining a dedicated interface improves documentation and future extensibility.",
+      "scanner": "llm",
+      "file": "web/src/components/ui/card.tsx",
+      "line": null,
+      "suggestion": "Create a small interface (e.g., `interface CardProps extends React.HTMLAttributes<HTMLDivElement> {}`) and use it for each component. Add comments for any future custom props."
+    },
+    {
+      "id": "1bc2356a-5dfe-4610-be23-b07443c1a717",
+      "severity": "low",
+      "title": "Missing explicit prop validation for `asChild` usage",
+      "description": "`asChild` allows any React node to be passed to the `Slot` component without checking that it is a valid element or that it does not contain unexpected props (e.g., `dangerouslySetInnerHTML`). While not a direct vulnerability, it can lead to runtime errors if mis‑used.",
+      "scanner": "llm",
+      "file": "web/src/components/ui/button.tsx",
+      "line": null,
+      "suggestion": "Add runtime validation or TypeScript constraints (e.g., `asChild?: boolean;`) and document that only simple elements should be used. Optionally guard against `dangerouslySetInnerHTML` in the spread props."
+    },
+    {
+      "id": "21fe2bb9-cd27-4cee-aba6-cea3afc8bab7",
+      "severity": "low",
+      "title": "Potential className injection via `className` prop",
+      "description": "The component merges any `className` passed in props directly into the final class string. If user‑controlled data reaches this prop, it could inject unwanted CSS classes, affecting UI but not code execution.",
+      "scanner": "llm",
+      "file": "web/src/components/ui/button.tsx",
+      "line": null,
+      "suggestion": "Sanitize or whitelist class names if the component will ever receive user‑generated content. Otherwise, ensure `className` is only used internally."
+    },
+    {
+      "id": "f67c3da8-1b00-44c3-8ddd-ccaae70fadfd",
+      "severity": "low",
+      "title": "Potential undefined displayName propagation",
+      "description": "The code assigns `TabsList.displayName = TabsPrimitive.List.displayName` (and similarly for Trigger and Content). If the underlying Radix component does not have a `displayName` property, the wrapper's `displayName` becomes `undefined`, which reduces debugging usefulness.",
+      "scanner": "llm",
+      "file": "web/src/components/ui/tabs.tsx",
+      "line": null,
+      "suggestion": "Explicitly set a descriptive displayName string, e.g., `TabsList.displayName = 'TabsList'`."
+    },
+    {
+      "id": "ef2fabf6-d830-4753-ad74-aa13e9211505",
+      "severity": "low",
+      "title": "Missing prop type documentation",
+      "description": "While the component uses `React.ComponentPropsWithoutRef<typeof TabsPrimitive.*>` for typing, there is no JSDoc or comment describing expected props, which can hinder developer onboarding.",
+      "scanner": "llm",
+      "file": "web/src/components/ui/tabs.tsx",
+      "line": null,
+      "suggestion": "Add brief JSDoc comments for each exported component describing its purpose and any important props."
+    },
+    {
+      "id": "d71a0f6f-0b27-426c-9f45-c6c9293c1f99",
+      "severity": "low",
+      "title": "Potential XSS via untrusted toast content",
+      "description": "The `title` and `description` values are rendered directly as React children. If these values originate from user‑controlled input and are rendered as HTML (e.g., by passing a React element that uses `dangerouslySetInnerHTML`), an attacker could inject malicious markup.",
+      "scanner": "llm",
+      "file": "web/src/components/ui/toaster.tsx",
+      "line": null,
+      "suggestion": "Validate or sanitize any data that comes from external sources before it reaches the `useToast` hook. Prefer passing plain strings and avoid allowing arbitrary React elements. If HTML must be displayed, sanitize it and use a library like DOMPurify before setting `dangerouslySetInnerHTML`."
+    },
+    {
+      "id": "10384892-8c9e-4a2d-a421-33638730b25f",
+      "severity": "low",
+      "title": "Unrestricted prop spreading onto Toast component",
+      "description": "All remaining properties from each toast object are spread onto the `<Toast>` component (`{...props}`). If a malicious actor could inject unexpected props (e.g., event handlers, `style` with `!important`, or data attributes), they might affect the UI or expose internal state.",
+      "scanner": "llm",
+      "file": "web/src/components/ui/toaster.tsx",
+      "line": null,
+      "suggestion": "Explicitly whitelist only the props that the Toast component expects, or validate the shape of the toast objects in the `useToast` hook before spreading them."
+    },
+    {
+      "id": "be9e8380-471d-4ef4-9cfd-fdb8d5f1278f",
+      "severity": "low",
+      "title": "Re‑creation of the map callback on every render",
+      "description": "An anonymous function is passed to `Array.map`, causing a new function instance on each render. While not a performance killer for small lists, it can lead to unnecessary re‑renders of child components that rely on referential equality.",
+      "scanner": "llm",
+      "file": "web/src/components/ui/toaster.tsx",
+      "line": null,
+      "suggestion": "Extract the toast rendering logic to a memoized component (e.g., `const ToastItem = React.memo(({ toast }) => { … })`) and reference it inside the map."
+    },
+    {
+      "id": "c134db26-6630-4762-afb6-973aedc96c3e",
+      "severity": "low",
+      "title": "Provider recreated on every render",
+      "description": "The `<ToastProvider>` component is instantiated inside the functional component, which means a new provider instance is created each time `Toaster` re‑renders. Depending on the implementation of `ToastProvider`, this could reset internal context state.",
+      "scanner": "llm",
+      "file": "web/src/components/ui/toaster.tsx",
+      "line": null,
+      "suggestion": "Lift `<ToastProvider>` higher in the component tree (e.g., at the app root) or wrap `Toaster` with `React.memo` if the provider is inexpensive to recreate."
+    },
+    {
+      "id": "e9e55100-31e0-4d86-a24d-69ff35d1d2c3",
+      "severity": "low",
+      "title": "Unrestricted HTML attribute spread",
+      "description": "The component spreads all received props onto the <label> element ({...props}). This includes potentially dangerous React attributes such as dangerouslySetInnerHTML, which could introduce XSS if mis‑used by a consumer.",
+      "scanner": "llm",
+      "file": "web/src/components/ui/label.tsx",
+      "line": null,
+      "suggestion": "Validate or restrict the allowed prop keys, or explicitly omit dangerous attributes before spreading. For example, use destructuring to remove `dangerouslySetInnerHTML` or create a whitelist of safe attributes."
+    }
+  ]
+}

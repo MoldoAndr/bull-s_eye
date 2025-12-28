@@ -7,8 +7,9 @@ from datetime import datetime
 from typing import List, Optional, Dict, Any
 import structlog
 import asyncio
+import secrets
 
-from fastapi import FastAPI, HTTPException, BackgroundTasks, Query
+from fastapi import FastAPI, HTTPException, BackgroundTasks, Query, Depends, Header
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
@@ -16,7 +17,7 @@ import json
 
 from config import settings, get_available_models
 from database import db
-from worker import analyze_repository
+from worker import analyze_repository, celery_app
 
 # Configure logging
 structlog.configure(
@@ -33,6 +34,27 @@ structlog.configure(
 )
 
 logger = structlog.get_logger()
+
+
+def require_api_key(
+    x_api_key: Optional[str] = Header(None, alias="X-API-Key"),
+    authorization: Optional[str] = Header(None, alias="Authorization"),
+    api_key: Optional[str] = Query(None, description="API key (use headers when possible)")
+) -> None:
+    """Require a valid API key for protected endpoints."""
+    expected = (settings.api_key or "").strip()
+    if not expected:
+        # Misconfiguration: refuse unauthenticated operation
+        raise HTTPException(status_code=500, detail="Server API key is not configured")
+
+    token = (x_api_key or api_key or "").strip()
+    if not token and authorization:
+        auth = authorization.strip()
+        if auth.lower().startswith("bearer "):
+            token = auth.split(" ", 1)[1].strip()
+
+    if not token or not secrets.compare_digest(token, expected):
+        raise HTTPException(status_code=401, detail="Unauthorized")
 
 # Create FastAPI app
 app = FastAPI(
@@ -85,6 +107,7 @@ class JobStatus(BaseModel):
     started_at: Optional[str]
     completed_at: Optional[str]
     error_message: Optional[str]
+    celery_task_id: Optional[str] = None
 
 
 class JobSummary(BaseModel):
@@ -146,6 +169,9 @@ class StatsResponse(BaseModel):
 async def startup():
     """Initialize application."""
     logger.info("Starting Bull's Eye API")
+    if not (settings.api_key or "").strip():
+        logger.error("API_KEY is required; refusing to start without authentication")
+        raise RuntimeError("API_KEY must be set (non-empty)")
     # Ensure data directory exists
     settings.data_dir.mkdir(parents=True, exist_ok=True)
     settings.repos_dir.mkdir(parents=True, exist_ok=True)
@@ -153,7 +179,12 @@ async def startup():
 
 # ==================== MODEL ENDPOINTS ====================
 
-@app.get("/api/models", response_model=List[ModelInfo], tags=["Models"])
+@app.get(
+    "/api/models",
+    response_model=List[ModelInfo],
+    tags=["Models"],
+    dependencies=[Depends(require_api_key)],
+)
 async def get_models():
     """Get list of available Ollama cloud models."""
     return get_available_models()
@@ -161,7 +192,12 @@ async def get_models():
 
 # ==================== JOB ENDPOINTS ====================
 
-@app.post("/api/jobs", response_model=JobStatus, tags=["Jobs"])
+@app.post(
+    "/api/jobs",
+    response_model=JobStatus,
+    tags=["Jobs"],
+    dependencies=[Depends(require_api_key)],
+)
 async def create_job(job_data: JobCreate, background_tasks: BackgroundTasks):
     """
     Create a new analysis job.
@@ -190,14 +226,20 @@ async def create_job(job_data: JobCreate, background_tasks: BackgroundTasks):
     )
     
     # Start analysis via Celery
-    analyze_repository.delay(job_id, job_data.model)
+    task = analyze_repository.delay(job_id, job_data.model)
+    db.set_job_task_id(job_id, task.id)
     
     # Return job status
     job = db.get_job(job_id)
     return _format_job_status(job)
 
 
-@app.get("/api/jobs", response_model=List[JobSummary], tags=["Jobs"])
+@app.get(
+    "/api/jobs",
+    response_model=List[JobSummary],
+    tags=["Jobs"],
+    dependencies=[Depends(require_api_key)],
+)
 async def list_jobs(
     status: Optional[str] = Query(None, description="Filter by status"),
     limit: int = Query(50, ge=1, le=100),
@@ -222,7 +264,12 @@ async def list_jobs(
     return result
 
 
-@app.get("/api/jobs/{job_id}", response_model=JobStatus, tags=["Jobs"])
+@app.get(
+    "/api/jobs/{job_id}",
+    response_model=JobStatus,
+    tags=["Jobs"],
+    dependencies=[Depends(require_api_key)],
+)
 async def get_job(job_id: str):
     """Get detailed job status."""
     job = db.get_job(job_id)
@@ -232,7 +279,11 @@ async def get_job(job_id: str):
     return _format_job_status(job)
 
 
-@app.post("/api/jobs/{job_id}/stop", tags=["Jobs"])
+@app.post(
+    "/api/jobs/{job_id}/stop",
+    tags=["Jobs"],
+    dependencies=[Depends(require_api_key)],
+)
 async def stop_job(job_id: str):
     """Stop a running job."""
     job = db.get_job(job_id)
@@ -241,6 +292,11 @@ async def stop_job(job_id: str):
     
     if job["status"] in ["completed", "failed", "cancelled"]:
         raise HTTPException(status_code=400, detail="Job is not running")
+    
+    # Stop Celery task if it exists
+    if job.get("celery_task_id"):
+        celery_app.control.revoke(job["celery_task_id"], terminate=True)
+        logger.info(f"Revoked Celery task {job['celery_task_id']} for job {job_id}")
     
     # Update job status to cancelled
     db.update_job_status(
@@ -256,7 +312,11 @@ async def stop_job(job_id: str):
     return {"message": "Job stopped successfully"}
 
 
-@app.delete("/api/jobs/{job_id}", tags=["Jobs"])
+@app.delete(
+    "/api/jobs/{job_id}",
+    tags=["Jobs"],
+    dependencies=[Depends(require_api_key)],
+)
 async def delete_job(job_id: str):
     """Delete a job and all its data."""
     job = db.get_job(job_id)
@@ -274,7 +334,11 @@ async def delete_job(job_id: str):
     return {"message": "Job deleted successfully"}
 
 
-@app.get("/api/jobs/{job_id}/status", tags=["Jobs"])
+@app.get(
+    "/api/jobs/{job_id}/status",
+    tags=["Jobs"],
+    dependencies=[Depends(require_api_key)],
+)
 async def get_job_status_updates(
     job_id: str,
     limit: int = Query(50, ge=1, le=200)
@@ -308,7 +372,11 @@ async def get_job_status_updates(
     }
 
 
-@app.get("/api/jobs/{job_id}/stream", tags=["Jobs"])
+@app.get(
+    "/api/jobs/{job_id}/stream",
+    tags=["Jobs"],
+    dependencies=[Depends(require_api_key)],
+)
 async def stream_job_status(job_id: str):
     """
     Stream job status updates via Server-Sent Events.
@@ -359,7 +427,12 @@ async def stream_job_status(job_id: str):
 
 # ==================== COMPONENT ENDPOINTS ====================
 
-@app.get("/api/jobs/{job_id}/components", response_model=List[ComponentInfo], tags=["Components"])
+@app.get(
+    "/api/jobs/{job_id}/components",
+    response_model=List[ComponentInfo],
+    tags=["Components"],
+    dependencies=[Depends(require_api_key)],
+)
 async def get_job_components(job_id: str):
     """Get all components for a job."""
     job = db.get_job(job_id)
@@ -372,7 +445,12 @@ async def get_job_components(job_id: str):
 
 # ==================== FINDING ENDPOINTS ====================
 
-@app.get("/api/jobs/{job_id}/findings", response_model=List[FindingInfo], tags=["Findings"])
+@app.get(
+    "/api/jobs/{job_id}/findings",
+    response_model=List[FindingInfo],
+    tags=["Findings"],
+    dependencies=[Depends(require_api_key)],
+)
 async def get_job_findings(
     job_id: str,
     severity: Optional[str] = Query(None, description="Filter by severity"),
@@ -394,7 +472,11 @@ async def get_job_findings(
     return [_format_finding(f) for f in findings]
 
 
-@app.get("/api/jobs/{job_id}/findings/summary", tags=["Findings"])
+@app.get(
+    "/api/jobs/{job_id}/findings/summary",
+    tags=["Findings"],
+    dependencies=[Depends(require_api_key)],
+)
 async def get_findings_summary(job_id: str):
     """Get findings summary by severity."""
     job = db.get_job(job_id)
@@ -406,7 +488,11 @@ async def get_findings_summary(job_id: str):
 
 # ==================== REPORT ENDPOINTS ====================
 
-@app.get("/api/jobs/{job_id}/report", tags=["Reports"])
+@app.get(
+    "/api/jobs/{job_id}/report",
+    tags=["Reports"],
+    dependencies=[Depends(require_api_key)],
+)
 async def get_job_report(job_id: str):
     """Get the full analysis report."""
     job = db.get_job(job_id)
@@ -422,7 +508,12 @@ async def get_job_report(job_id: str):
 
 # ==================== STATS ENDPOINTS ====================
 
-@app.get("/api/stats", response_model=StatsResponse, tags=["Stats"])
+@app.get(
+    "/api/stats",
+    response_model=StatsResponse,
+    tags=["Stats"],
+    dependencies=[Depends(require_api_key)],
+)
 async def get_stats():
     """Get overall statistics."""
     return db.get_stats()
@@ -430,7 +521,11 @@ async def get_stats():
 
 # ==================== WEBHOOK ENDPOINTS ====================
 
-@app.post("/webhook/analyze", tags=["Webhooks"])
+@app.post(
+    "/webhook/analyze",
+    tags=["Webhooks"],
+    dependencies=[Depends(require_api_key)],
+)
 async def webhook_analyze(
     repo_url: str,
     branch: str = "main",
@@ -490,6 +585,7 @@ def _format_job_status(job: Dict) -> Dict:
         "started_at": job.get("started_at"),
         "completed_at": job.get("completed_at"),
         "error_message": job.get("error_message"),
+        "celery_task_id": job.get("celery_task_id"),
     }
 
 

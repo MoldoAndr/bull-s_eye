@@ -54,9 +54,11 @@ export default function JobDetailPage() {
   } | null>(null);
 
   // Main job query
-  const { data: job, isLoading: jobLoading, refetch: refetchJob } = useQuery({
+  const { data: job, isLoading: jobLoading, error: jobError, refetch: refetchJob } = useQuery({
     queryKey: ["job", jobId],
     queryFn: () => api.getJob(jobId),
+    retry: 3,
+    retryDelay: 1000,
     refetchInterval: (query) => {
       const status = query.state.data?.status;
       return status === "completed" || status === "failed" ? false : 5000;
@@ -120,7 +122,40 @@ export default function JobDetailPage() {
   if (jobLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        <div className="text-center">
+          <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto mb-4" />
+          <p className="text-sm text-muted-foreground">Loading job details...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (jobError) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center max-w-md">
+          <AlertTriangle className="h-12 w-12 text-destructive mx-auto mb-4" />
+          <h2 className="text-xl font-semibold mb-2">Failed to load job</h2>
+          <p className="text-sm text-muted-foreground mb-4">
+            {jobError instanceof Error ? jobError.message : "An error occurred while loading the job details"}
+          </p>
+          <div className="flex gap-2 justify-center">
+            <button
+              onClick={() => refetchJob()}
+              className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 flex items-center gap-2"
+            >
+              <RefreshCw className="h-4 w-4" />
+              Retry
+            </button>
+            <Link
+              href="/"
+              className="px-4 py-2 border border-border rounded-lg hover:bg-accent flex items-center gap-2"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Back to home
+            </Link>
+          </div>
+        </div>
       </div>
     );
   }
@@ -148,24 +183,24 @@ export default function JobDetailPage() {
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="border-b border-border bg-card sticky top-0 z-10">
+      <header className="border-b border-primary/30 bg-black/40 backdrop-blur-md sticky top-0 z-10">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center gap-4">
             <button
               onClick={() => router.push("/")}
-              className="p-2 hover:bg-accent rounded-lg transition-colors"
+              className="p-2 hover:bg-primary/10 rounded-lg transition-colors text-primary"
             >
               <ArrowLeft className="h-5 w-5" />
             </button>
             <div className="flex-1">
-              <h1 className="text-xl font-bold">{job.name}</h1>
-              <p className="text-sm text-muted-foreground">
+              <h1 className="text-xl font-bold tracking-tighter uppercase italic">{job.name}</h1>
+              <p className="text-[10px] text-primary/70 font-mono uppercase tracking-widest">
                 {job.repo_url} • {job.branch}
               </p>
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-xs text-muted-foreground">Model:</span>
-              <span className="text-xs font-medium px-2 py-1 bg-primary/10 rounded">
+              <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Model:</span>
+              <span className="text-[10px] font-mono font-bold px-2 py-1 bg-primary/20 border border-primary/30 text-primary rounded">
                 {job.model}
               </span>
             </div>
@@ -174,7 +209,7 @@ export default function JobDetailPage() {
       </header>
 
       {/* Progress Status Bar */}
-      <div className="border-b border-border bg-card/50">
+      <div className="border-b border-primary/20 bg-black/20">
         <div className="container mx-auto px-4 py-6">
           {/* Stage Progress */}
           <div className="flex items-center justify-between mb-4">
@@ -263,36 +298,36 @@ export default function JobDetailPage() {
 
       {/* Findings Summary Bar */}
       {findingsSummary && findingsSummary.total > 0 && (
-        <div className="border-b border-border bg-card/30">
+        <div className="border-b border-primary/20 bg-black/40">
           <div className="container mx-auto px-4 py-3">
             <div className="flex items-center gap-4 flex-wrap">
-              <span className="text-sm font-medium">Findings:</span>
+              <span className="text-[10px] font-bold uppercase tracking-widest text-primary/80">Findings:</span>
               {findingsSummary.critical > 0 && (
-                <span className="px-2 py-1 rounded text-xs font-medium bg-red-500/10 text-red-600 border border-red-500/20">
+                <span className="px-2 py-1 rounded-none text-[10px] font-bold uppercase bg-red-500/10 text-red-500 border border-red-500/30 font-mono">
                   {findingsSummary.critical} Critical
                 </span>
               )}
               {findingsSummary.high > 0 && (
-                <span className="px-2 py-1 rounded text-xs font-medium bg-orange-500/10 text-orange-600 border border-orange-500/20">
+                <span className="px-2 py-1 rounded-none text-[10px] font-bold uppercase bg-orange-500/10 text-orange-500 border border-orange-500/30 font-mono">
                   {findingsSummary.high} High
                 </span>
               )}
               {findingsSummary.medium > 0 && (
-                <span className="px-2 py-1 rounded text-xs font-medium bg-yellow-500/10 text-yellow-600 border border-yellow-500/20">
+                <span className="px-2 py-1 rounded-none text-[10px] font-bold uppercase bg-yellow-500/10 text-yellow-500 border border-yellow-500/30 font-mono">
                   {findingsSummary.medium} Medium
                 </span>
               )}
               {findingsSummary.low > 0 && (
-                <span className="px-2 py-1 rounded text-xs font-medium bg-blue-500/10 text-blue-600 border border-blue-500/20">
+                <span className="px-2 py-1 rounded-none text-[10px] font-bold uppercase bg-blue-500/10 text-blue-500 border border-blue-500/30 font-mono">
                   {findingsSummary.low} Low
                 </span>
               )}
               {findingsSummary.info > 0 && (
-                <span className="px-2 py-1 rounded text-xs font-medium bg-gray-500/10 text-gray-600 border border-gray-500/20">
+                <span className="px-2 py-1 rounded-none text-[10px] font-bold uppercase bg-gray-500/10 text-gray-400 border border-gray-500/30 font-mono">
                   {findingsSummary.info} Info
                 </span>
               )}
-              <span className="text-sm text-muted-foreground ml-auto">
+              <span className="text-[10px] text-primary/60 ml-auto font-mono uppercase tracking-widest">
                 Total: {findingsSummary.total}
               </span>
             </div>
@@ -301,7 +336,7 @@ export default function JobDetailPage() {
       )}
 
       {/* Tabs */}
-      <div className="border-b border-border bg-card/30">
+      <div className="border-b border-primary/20 bg-black/60 sticky top-[73px] z-10 backdrop-blur-md">
         <div className="container mx-auto px-4">
           <div className="flex gap-1">
             {[
@@ -314,14 +349,17 @@ export default function JobDetailPage() {
                 key={tab.key}
                 onClick={() => setActiveTab(tab.key as any)}
                 className={cn(
-                  "flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors",
+                  "flex items-center gap-2 px-6 py-4 text-[10px] font-bold uppercase tracking-[0.2em] transition-all relative",
                   activeTab === tab.key
-                    ? "border-primary text-primary"
-                    : "border-transparent text-muted-foreground hover:text-foreground"
+                    ? "text-primary"
+                    : "text-muted-foreground hover:text-primary/70"
                 )}
               >
-                <tab.icon className="h-4 w-4" />
+                <tab.icon className="h-3 w-3" />
                 {tab.label}
+                {activeTab === tab.key && (
+                  <div className="absolute bottom-0 left-0 w-full h-[2px] bg-primary shadow-[0_0_10px_rgba(4,6,89,0.8)]" />
+                )}
               </button>
             ))}
           </div>
@@ -329,60 +367,60 @@ export default function JobDetailPage() {
       </div>
 
       {/* Content */}
-      <main className="container mx-auto px-4 py-6">
+      <main className="container mx-auto px-4 py-8">
         {/* Overview Tab */}
         {activeTab === "overview" && (
-          <div className="space-y-6">
+          <div className="space-y-8">
             {/* Job Info */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="bg-card rounded-lg border border-border p-4">
-                <h3 className="font-medium mb-3">Job Information</h3>
-                <dl className="space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <dt className="text-muted-foreground">Repository</dt>
-                    <dd className="font-mono text-xs">{job.repo_url}</dd>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="cyber-card p-6">
+                <h3 className="text-xs font-bold uppercase tracking-widest mb-6 text-primary border-b border-primary/20 pb-2">Job Information</h3>
+                <dl className="space-y-4 text-[11px] font-mono">
+                  <div className="flex justify-between items-center border-b border-primary/5 pb-2">
+                    <dt className="text-muted-foreground uppercase tracking-tighter">Repository</dt>
+                    <dd className="text-primary truncate max-w-[250px]">{job.repo_url}</dd>
                   </div>
-                  <div className="flex justify-between">
-                    <dt className="text-muted-foreground">Branch</dt>
-                    <dd>{job.branch}</dd>
+                  <div className="flex justify-between items-center border-b border-primary/5 pb-2">
+                    <dt className="text-muted-foreground uppercase tracking-tighter">Branch</dt>
+                    <dd className="text-primary">{job.branch}</dd>
                   </div>
-                  <div className="flex justify-between">
-                    <dt className="text-muted-foreground">Model</dt>
-                    <dd>{job.model}</dd>
+                  <div className="flex justify-between items-center border-b border-primary/5 pb-2">
+                    <dt className="text-muted-foreground uppercase tracking-tighter">Model</dt>
+                    <dd className="text-primary">{job.model}</dd>
                   </div>
-                  <div className="flex justify-between">
-                    <dt className="text-muted-foreground">Created</dt>
-                    <dd>{formatDate(job.created_at)}</dd>
+                  <div className="flex justify-between items-center border-b border-primary/5 pb-2">
+                    <dt className="text-muted-foreground uppercase tracking-tighter">Created</dt>
+                    <dd className="text-primary">{formatDate(job.created_at)}</dd>
                   </div>
                   {job.started_at && (
-                    <div className="flex justify-between">
-                      <dt className="text-muted-foreground">Started</dt>
-                      <dd>{formatDate(job.started_at)}</dd>
+                    <div className="flex justify-between items-center border-b border-primary/5 pb-2">
+                      <dt className="text-muted-foreground uppercase tracking-tighter">Started</dt>
+                      <dd className="text-primary">{formatDate(job.started_at)}</dd>
                     </div>
                   )}
                   {job.completed_at && (
-                    <div className="flex justify-between">
-                      <dt className="text-muted-foreground">Completed</dt>
-                      <dd>{formatDate(job.completed_at)}</dd>
+                    <div className="flex justify-between items-center border-b border-primary/5 pb-2">
+                      <dt className="text-muted-foreground uppercase tracking-tighter">Completed</dt>
+                      <dd className="text-primary">{formatDate(job.completed_at)}</dd>
                     </div>
                   )}
                 </dl>
               </div>
 
               {/* Status Log */}
-              <div className="bg-card rounded-lg border border-border p-4 max-h-80 overflow-y-auto">
-                <h3 className="font-medium mb-3">Activity Log</h3>
-                <div className="space-y-2">
+              <div className="cyber-card p-6 max-h-[400px] overflow-y-auto">
+                <h3 className="text-xs font-bold uppercase tracking-widest mb-6 text-primary border-b border-primary/20 pb-2">Activity Log</h3>
+                <div className="space-y-4">
                   {statusUpdates?.updates.slice(0, 20).map((update, idx) => (
-                    <div key={idx} className="text-sm border-l-2 border-border pl-3 py-1">
+                    <div key={idx} className="text-[11px] border-l-2 border-primary/30 pl-4 py-1 font-mono">
                       <div className="flex items-center justify-between">
-                        <span className="font-medium">{update.message}</span>
-                        <span className="text-xs text-muted-foreground">
+                        <span className="font-bold text-primary/90 uppercase tracking-tighter">{update.message}</span>
+                        <span className="text-[9px] text-muted-foreground">
                           {new Date(update.timestamp).toLocaleTimeString()}
                         </span>
                       </div>
                       {update.details && (
-                        <p className="text-xs text-muted-foreground mt-1">{update.details}</p>
+                        <p className="text-muted-foreground mt-1 italic text-[10px]">&gt; {update.details}</p>
                       )}
                     </div>
                   ))}
@@ -392,9 +430,9 @@ export default function JobDetailPage() {
 
             {/* Error display */}
             {job.error_message && (
-              <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-4">
-                <h3 className="font-medium text-destructive mb-2">Error</h3>
-                <p className="text-sm">{job.error_message}</p>
+              <div className="bg-red-500/10 border border-red-500/30 p-6 font-mono">
+                <h3 className="text-xs font-bold text-red-500 uppercase tracking-widest mb-2">Critical Error</h3>
+                <p className="text-sm text-red-400">&gt; {job.error_message}</p>
               </div>
             )}
           </div>

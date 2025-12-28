@@ -73,7 +73,7 @@ def analyze_repository(self, job_id: str, model: Optional[str] = None):
         return {"job_id": job_id, "success": result}
         
     except Exception as e:
-        logger.error("Analysis task failed", job_id=job_id, error=str(e))
+        logger.error("Analysis task failed", job_id=job_id, error_type=type(e).__name__)
         raise
 
 

@@ -13,6 +13,7 @@ import json
 import time
 import structlog
 import asyncio
+import os
 
 logger = structlog.get_logger()
 
@@ -110,6 +111,54 @@ class BaseScanner(ABC):
         """Get the name of the tool."""
         return self.name
 
+    def _resolve_and_validate_target(self, target_path: Optional[Path]) -> Optional[Path]:
+        if target_path is None:
+            return None
+
+        resolved_repo = self.repo_path.resolve()
+        resolved_target = target_path.resolve()
+        try:
+            resolved_target.relative_to(resolved_repo)
+        except ValueError:
+            raise ValueError(f"target_path must be within repo_path: {resolved_target}")
+        return resolved_target
+
+    def _redact_command_for_log(self, command: List[str]) -> str:
+        redacted: List[str] = []
+        secret_markers = (
+            "--token",
+            "--api-key",
+            "--apikey",
+            "--password",
+            "--secret",
+            "authorization=",
+            "token=",
+            "api_key=",
+            "apikey=",
+        )
+
+        skip_next = False
+        for part in command:
+            if skip_next:
+                redacted.append("***")
+                skip_next = False
+                continue
+
+            lower = part.lower()
+            if any(m in lower for m in secret_markers):
+                if lower.startswith("--") and "=" not in part:
+                    redacted.append(part)
+                    skip_next = True
+                elif "=" in part:
+                    k, _ = part.split("=", 1)
+                    redacted.append(f"{k}=***")
+                else:
+                    redacted.append("***")
+            else:
+                redacted.append(part)
+
+        return " ".join(redacted)
+
     async def scan(self, target_path: str, job_id: str, component_id: Optional[str] = None) -> List[Dict[str, Any]]:
         """
         Run the scanner and return findings as a list of dictionaries.
@@ -162,9 +211,26 @@ class BaseScanner(ABC):
                 errors_count=1,
             )
         
-        command = self.build_command(target_path)
-        command_str = " ".join(command)
-        
+        try:
+            validated_target = self._resolve_and_validate_target(target_path)
+        except Exception as e:
+            self.logger.error("Invalid scan target", error=str(e))
+            return ScannerResult(
+                scanner_name=self.name,
+                scanner_version=self.get_version(),
+                success=False,
+                findings=[],
+                command="",
+                exit_code=-1,
+                duration_ms=0,
+                stdout="",
+                stderr=str(e),
+                errors_count=1,
+            )
+
+        command = self.build_command(validated_target)
+        command_str = self._redact_command_for_log(command)
+
         self.logger.info("Running scanner", command=command_str)
         
         start_time = time.time()
@@ -174,6 +240,8 @@ class BaseScanner(ABC):
                 cwd=str(self.repo_path),
                 capture_output=True,
                 text=True,
+                shell=False,
+                env={"PATH": os.environ.get("PATH", "")},
                 timeout=600,  # 10 minute timeout
             )
             exit_code = result.returncode
