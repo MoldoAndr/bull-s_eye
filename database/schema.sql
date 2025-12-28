@@ -58,7 +58,7 @@ CREATE TABLE IF NOT EXISTS findings (
     job_id TEXT NOT NULL REFERENCES jobs(id) ON DELETE CASCADE,
     component_id TEXT REFERENCES components(id) ON DELETE CASCADE,
     file_id TEXT REFERENCES files(id) ON DELETE CASCADE,
-    scanner TEXT NOT NULL,  -- 'gitleaks', 'semgrep', 'llm', etc.
+    scanner TEXT NOT NULL,  -- 'gitleaks', 'opengrep', 'llm', etc.
     rule_id TEXT,
     severity TEXT NOT NULL CHECK (severity IN ('critical', 'high', 'medium', 'low', 'info')),
     category TEXT,  -- 'security', 'quality', 'performance', 'style', etc.

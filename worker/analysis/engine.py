@@ -407,7 +407,7 @@ class AnalysisEngine:
         all_findings = []
         self._ensure_not_cancelled()
         
-        # Get universal scanners (gitleaks, semgrep, trivy)
+        # Get universal scanners (gitleaks, opengrep, osv-scanner, lizard, trivy)
         universal_scanners = get_universal_scanners(self.repo_path)
         
         # Run universal scanners on whole repo

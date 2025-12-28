@@ -7,6 +7,7 @@ from typing import List, Dict, Any, Optional
 from dataclasses import dataclass
 import json
 from pathlib import Path
+from llm.ollama_client import parse_llm_json_response
 
 @dataclass
 class CodebaseContext:
@@ -274,19 +275,15 @@ Respond with JSON:
     
     def _parse_analysis_response(self, response: str) -> Dict[str, Any]:
         """Parse LLM response into structured format."""
-        try:
-            if "```json" in response:
-                response = response.split("```json")[1].split("```")[0]
-            elif "```" in response:
-                response = response.split("```")[1].split("```")[0]
-            
-            return json.loads(response.strip())
-        except:
-            return {
-                "summary": "Failed to parse response",
-                "raw_response": response,
-                "error": "JSON parsing failed"
-            }
+        parsed, _ = parse_llm_json_response(response)
+        if parsed is not None:
+            return parsed
+
+        return {
+            "summary": "Failed to parse response",
+            "raw_response": response,
+            "error": "JSON parsing failed",
+        }
     
     async def generate_architectural_summary(self) -> Dict[str, Any]:
         """Generate a comprehensive architectural analysis."""

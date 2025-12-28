@@ -103,7 +103,7 @@ export function NewJobDialog({
       />
 
       {/* Dialog */}
-      <div className="relative cyber-card rounded-none shadow-2xl w-full max-w-lg mx-4 overflow-hidden">
+      <div className="relative cyber-card rounded-none shadow-2xl w-full max-w-3xl mx-4 overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between p-5 border-b border-primary/30 bg-black/60">
           <div className="flex items-center gap-2">
@@ -123,9 +123,9 @@ export function NewJobDialog({
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-5 space-y-5 bg-black/40">
+        <form onSubmit={handleSubmit} className="p-5 bg-black/40 grid gap-5 md:grid-cols-2">
           {/* Repository URL */}
-          <div>
+          <div className="md:col-span-2">
             <label className="block text-[10px] uppercase tracking-widest font-bold mb-2 text-primary/80">
               Repository URL <span className="text-red-500">*</span>
             </label>
@@ -232,7 +232,7 @@ export function NewJobDialog({
           </div>
 
           {/* API Key */}
-          <div>
+          <div className="md:col-span-2">
             <label className="block text-[10px] uppercase tracking-widest font-bold mb-2 text-primary/80">
               Ollama API Keys <span className="text-muted-foreground lowercase font-normal">(optional)</span>
             </label>
@@ -281,7 +281,7 @@ export function NewJobDialog({
 
           {/* Error Message */}
           {createMutation.isError && (
-            <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-none text-[10px] uppercase font-bold text-red-500 font-mono">
+            <div className="md:col-span-2 p-3 bg-red-500/10 border border-red-500/30 rounded-none text-[10px] uppercase font-bold text-red-500 font-mono">
               &gt; ERROR: {createMutation.error instanceof Error
                 ? createMutation.error.message
                 : "Failed to create analysis job"}
@@ -289,7 +289,7 @@ export function NewJobDialog({
           )}
 
           {/* Actions */}
-          <div className="flex gap-3 pt-2">
+          <div className="md:col-span-2 flex gap-3 pt-2">
             <button
               type="button"
               onClick={() => onOpenChange(false)}

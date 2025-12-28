@@ -40,7 +40,7 @@ RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
 
 # Install security scanning tools
 # Python
-RUN pip install --no-cache-dir ruff bandit pip-audit mypy
+RUN pip install --no-cache-dir ruff bandit pip-audit mypy lizard
 
 # Go
 ENV GOBIN=/usr/local/bin
@@ -52,13 +52,23 @@ RUN go install github.com/securego/gosec/v2/cmd/gosec@latest \
 RUN cargo install --root /usr/local cargo-audit cargo-deny
 
 # Node.js
-RUN npm install -g eslint @eslint/js typescript depcheck
+RUN npm install -g @biomejs/biome
 
 # Multi-language tools
-RUN pip install --no-cache-dir semgrep
+RUN curl -fsSL https://github.com/opengrep/opengrep/releases/latest/download/opengrep_manylinux_x86 -o /usr/local/bin/opengrep \
+    && chmod +x /usr/local/bin/opengrep
+
+# OSV-Scanner
+RUN curl -fsSL https://github.com/google/osv-scanner/releases/latest/download/osv-scanner_linux_amd64 -o /usr/local/bin/osv-scanner \
+    && chmod +x /usr/local/bin/osv-scanner
 
 # Secrets detection
-RUN curl -sSfL https://raw.githubusercontent.com/gitleaks/gitleaks/main/scripts/install.sh | sh -s -- -b /usr/local/bin
+ARG GITLEAKS_VERSION=8.30.0
+RUN curl -fsSL https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz -o /tmp/gitleaks.tar.gz \
+    && tar -xzf /tmp/gitleaks.tar.gz -C /tmp \
+    && mv /tmp/gitleaks /usr/local/bin/gitleaks \
+    && chmod +x /usr/local/bin/gitleaks \
+    && rm /tmp/gitleaks.tar.gz
 
 # Trivy for comprehensive scanning
 RUN curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin

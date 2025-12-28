@@ -108,6 +108,28 @@ class Settings(BaseSettings):
         default=10,
         description="Maximum related files to include in context"
     )
+
+    # Scanner settings
+    enable_opengrep: bool = Field(
+        default=True,
+        description="Enable Opengrep scanning"
+    )
+    enable_osv_scanner: bool = Field(
+        default=True,
+        description="Enable OSV-Scanner dependency scanning"
+    )
+    enable_biome: bool = Field(
+        default=True,
+        description="Enable Biome JS/TS linting"
+    )
+    enable_lizard: bool = Field(
+        default=True,
+        description="Enable Lizard complexity scanning"
+    )
+    complexity_threshold: int = Field(
+        default=10,
+        description="Cyclomatic complexity threshold for Lizard findings"
+    )
     
     # Logging
     log_level: str = Field(

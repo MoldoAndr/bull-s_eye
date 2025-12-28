@@ -7,6 +7,7 @@ IMPORTANT: All requests are SEQUENTIAL - no parallel requests allowed
 import json
 import time
 import asyncio
+import re
 from typing import Optional, Dict, Any, List
 import httpx
 import structlog
@@ -15,6 +16,86 @@ from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_excep
 from config import settings
 
 logger = structlog.get_logger()
+
+# JSON response helpers
+_JSON_CODE_FENCE_RE = re.compile(r"```(?:json)?\s*(.*?)```", re.DOTALL | re.IGNORECASE)
+
+ANALYSIS_SCHEMA_TEMPLATE = """{
+    "summary": "Brief 1-2 sentence description of what this file does",
+    "purpose": "Main responsibility/purpose of this code",
+    "complexity": "low|medium|high",
+    "is_entrypoint": true/false,
+    "is_test_file": true/false,
+    "security_issues": [
+        {
+            "severity": "critical|high|medium|low",
+            "title": "Issue title",
+            "description": "Detailed description",
+            "line_hint": "approximate line or code pattern",
+            "recommendation": "How to fix it"
+        }
+    ],
+    "quality_issues": [
+        {
+            "severity": "high|medium|low",
+            "title": "Issue title",
+            "description": "Detailed description",
+            "recommendation": "How to fix it"
+        }
+    ],
+    "positive_aspects": ["list of good practices found in this code"],
+    "dependencies_analysis": "Brief analysis of imported dependencies and potential risks"
+}"""
+
+
+def _extract_json_payload(text: str) -> str:
+    if not text:
+        return ""
+
+    match = _JSON_CODE_FENCE_RE.search(text)
+    if match:
+        return match.group(1).strip()
+
+    stripped = text.strip()
+    obj_start = stripped.find("{")
+    obj_end = stripped.rfind("}")
+    if obj_start != -1 and obj_end != -1 and obj_end > obj_start:
+        return stripped[obj_start : obj_end + 1].strip()
+
+    arr_start = stripped.find("[")
+    arr_end = stripped.rfind("]")
+    if arr_start != -1 and arr_end != -1 and arr_end > arr_start:
+        return stripped[arr_start : arr_end + 1].strip()
+
+    return stripped
+
+
+def _sanitize_json_text(text: str) -> str:
+    cleaned = text.replace("\ufeff", "")
+    cleaned = cleaned.replace("“", '"').replace("”", '"')
+    cleaned = cleaned.replace("’", "'").replace("‘", "'")
+    cleaned = cleaned.replace("**", "").replace("__", "").replace("`", "")
+    cleaned = re.sub(r",\s*([}\]])", r"\1", cleaned)
+    return cleaned.strip()
+
+
+def parse_llm_json_response(text: str) -> tuple[Optional[Dict[str, Any]], str]:
+    payload = _extract_json_payload(text)
+    if not payload:
+        return None, ""
+
+    for method, candidate in (
+        ("direct", payload),
+        ("sanitized", _sanitize_json_text(payload)),
+    ):
+        try:
+            parsed = json.loads(candidate)
+        except json.JSONDecodeError:
+            continue
+        if isinstance(parsed, dict):
+            return parsed, method
+
+    return None, ""
 
 # Per-API-key locks to allow parallelism across keys while keeping each key sequential.
 _ollama_locks: Dict[str, asyncio.Lock] = {}
@@ -202,52 +283,31 @@ Always respond with valid JSON."""
 ```
 
 Respond with JSON in this exact format:
-{{
-    "summary": "Brief 1-2 sentence description of what this file does",
-    "purpose": "Main responsibility/purpose of this code",
-    "complexity": "low|medium|high",
-    "is_entrypoint": true/false,
-    "is_test_file": true/false,
-    "security_issues": [
-        {{
-            "severity": "critical|high|medium|low",
-            "title": "Issue title",
-            "description": "Detailed description",
-            "line_hint": "approximate line or code pattern",
-            "recommendation": "How to fix it"
-        }}
-    ],
-    "quality_issues": [
-        {{
-            "severity": "high|medium|low",
-            "title": "Issue title",
-            "description": "Detailed description",
-            "recommendation": "How to fix it"
-        }}
-    ],
-    "positive_aspects": ["list of good practices found in this code"],
-    "dependencies_analysis": "Brief analysis of imported dependencies and potential risks"
-}}"""
+{ANALYSIS_SCHEMA_TEMPLATE}"""
         }
-        
+
+        response = ""
         try:
             response = await self.chat([system_message, user_message])
-            
-            # Try to parse JSON from response
-            # Handle markdown code blocks if present
-            if "```json" in response:
-                response = response.split("```json")[1].split("```")[0]
-            elif "```" in response:
-                response = response.split("```")[1].split("```")[0]
-            
-            return json.loads(response.strip())
-            
-        except json.JSONDecodeError as e:
+        except Exception as e:
+            self.logger.error("Code analysis failed", file=file_path, error=str(e))
+            return {
+                "summary": f"Analysis failed: {str(e)}",
+                "purpose": "Unknown",
+                "error": str(e),
+            }
+
+        parsed, method = parse_llm_json_response(response)
+        if parsed is None:
+            parsed = await self._repair_json_response(response, file_path)
+            if parsed is not None:
+                method = "repair"
+
+        if parsed is None:
             self.logger.warning(
                 "Failed to parse LLM response as JSON",
                 file=file_path,
-                error=str(e),
-                response_preview=response[:500] if response else "empty"
+                response_preview=response[:500] if response else "empty",
             )
             return {
                 "summary": "Analysis completed but response parsing failed",
@@ -255,16 +315,74 @@ Respond with JSON in this exact format:
                 "complexity": "unknown",
                 "security_issues": [],
                 "quality_issues": [],
-                "parse_error": str(e),
-                "raw_response": response[:1000] if response else ""
+                "parse_error": "LLM JSON parsing failed",
+                "raw_response": response[:1000] if response else "",
             }
+
+        if method != "direct":
+            self.logger.info("Parsed LLM response after cleanup", file=file_path, method=method)
+
+        return self._normalize_analysis_result(parsed)
+
+    async def _repair_json_response(
+        self,
+        response: str,
+        file_path: str,
+    ) -> Optional[Dict[str, Any]]:
+        if not response.strip():
+            return None
+
+        system_message = {
+            "role": "system",
+            "content": "You fix malformed JSON. Return ONLY valid JSON, no markdown or commentary.",
+        }
+        user_message = {
+            "role": "user",
+            "content": f"""Fix the JSON below so it matches this exact schema and is valid JSON.
+
+Schema:
+{ANALYSIS_SCHEMA_TEMPLATE}
+
+Malformed response:
+```text
+{response}
+```
+""",
+        }
+
+        try:
+            repaired = await self.chat(
+                [system_message, user_message],
+                temperature=0.0,
+                allow_fallback=False,
+            )
         except Exception as e:
-            self.logger.error("Code analysis failed", file=file_path, error=str(e))
-            return {
-                "summary": f"Analysis failed: {str(e)}",
-                "purpose": "Unknown",
-                "error": str(e)
-            }
+            self.logger.info("LLM JSON repair failed", file=file_path, error=str(e))
+            return None
+
+        parsed, _ = parse_llm_json_response(repaired)
+        if parsed is None:
+            self.logger.info("LLM JSON repair produced invalid JSON", file=file_path)
+            return None
+
+        self.logger.info("Repaired LLM response JSON", file=file_path)
+        return parsed
+
+    def _normalize_analysis_result(self, data: Dict[str, Any]) -> Dict[str, Any]:
+        def _ensure_list(value: Any) -> List[Any]:
+            return value if isinstance(value, list) else []
+
+        return {
+            "summary": data.get("summary", ""),
+            "purpose": data.get("purpose", ""),
+            "complexity": data.get("complexity", "unknown"),
+            "is_entrypoint": bool(data.get("is_entrypoint", False)),
+            "is_test_file": bool(data.get("is_test_file", False)),
+            "security_issues": _ensure_list(data.get("security_issues")),
+            "quality_issues": _ensure_list(data.get("quality_issues")),
+            "positive_aspects": _ensure_list(data.get("positive_aspects")),
+            "dependencies_analysis": data.get("dependencies_analysis", ""),
+        }
 
     async def filter_security_irrelevant_files(
         self,

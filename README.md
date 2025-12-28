@@ -47,11 +47,33 @@ docker-compose up -d
 ## 🛠️ What's Under The Hood
 
 - **Component Detection** - Automatically breaks down massive codebases
-- **Multi-Scanner** - Gitleaks, Semgrep, Trivy, Ruff, Bandit, ESLint, Clippy...
+- **Multi-Scanner** - Gitleaks, Opengrep, OSV-Scanner, Trivy, Ruff, Bandit, Biome, Clippy, Lizard...
 - **n8n Orchestration** - Workflow automation without the pain
 - **Real-Time Updates** - SSE streams, precise progress tracking
 - **SQLite** - Because not everything needs PostgreSQL
 - **One-File-At-A-Time** - Ollama Cloud = sequential only (we handle it)
+
+---
+
+## 🧰 Scanners
+
+- **Security** - Opengrep, Gitleaks, Trivy
+- **Dependencies** - OSV-Scanner, pip-audit, npm audit, cargo-audit, govulncheck
+- **Lint/Quality** - Ruff, Bandit, Biome, Golangci-lint, Clippy
+- **Complexity** - Lizard (cyclomatic complexity thresholding)
+
+---
+
+## 📈 Performance Benchmarks
+
+- **Biome vs ESLint** - 10-100x faster JS/TS linting (vendor-reported); benchmark with `biome lint --reporter=json` on your repos.
+
+---
+
+## 🧾 Findings
+
+- **Dependency vulnerabilities** now include OSV advisory IDs, CVSS scores, and affected version ranges.
+- **Complexity hotspots** are reported when cyclomatic complexity exceeds `COMPLEXITY_THRESHOLD`.
 
 ---
 
@@ -92,6 +114,11 @@ OLLAMA_API_KEY=your-key         # Required
 OLLAMA_MODEL=gpt-oss:120b-cloud # Default
 REDIS_URL=redis://redis:6379/0
 ENABLE_LLM_ANALYSIS=true
+ENABLE_OPENGREP=true
+ENABLE_OSV_SCANNER=true
+ENABLE_BIOME=true
+ENABLE_LIZARD=true
+COMPLEXITY_THRESHOLD=10
 ```
 
 Check `.env.example` for more.

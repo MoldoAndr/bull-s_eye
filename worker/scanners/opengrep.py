@@ -1,5 +1,5 @@
 """
-Bull's Eye - Semgrep Scanner
+Bull's Eye - Opengrep Scanner
 Multi-language static analysis security scanner
 """
 
@@ -10,19 +10,19 @@ from typing import List, Optional
 from .base import BaseScanner, ScannerFinding, ScannerType
 
 
-class SemgrepScanner(BaseScanner):
-    """Scanner for static analysis using semgrep."""
+class OpengrepScanner(BaseScanner):
+    """Scanner for static analysis using opengrep."""
     
-    name = "semgrep"
+    name = "opengrep"
     scanner_type = ScannerType.SECURITY
     supported_languages = ["python", "go", "rust", "javascript", "typescript"]
     
     def is_available(self) -> bool:
-        stdout, _, code = self._run_command(["semgrep", "--version"])
+        stdout, _, code = self._run_command(["opengrep", "--version"])
         return code == 0
     
     def get_version(self) -> Optional[str]:
-        stdout, _, code = self._run_command(["semgrep", "--version"])
+        stdout, _, code = self._run_command(["opengrep", "--version"])
         if code == 0:
             return stdout.strip()
         return None
@@ -30,7 +30,7 @@ class SemgrepScanner(BaseScanner):
     def build_command(self, target_path: Optional[Path] = None) -> List[str]:
         target = str(target_path) if target_path else str(self.repo_path)
         return [
-            "semgrep",
+            "opengrep",
             "scan",
             "--config", "auto",  # Use recommended rules
             "--json",
@@ -77,12 +77,12 @@ class SemgrepScanner(BaseScanner):
                 )
                 findings.append(finding)
         except json.JSONDecodeError as e:
-            self.logger.warning("Failed to parse semgrep output", error=str(e))
+            self.logger.warning("Failed to parse opengrep output", error=str(e))
         
         return findings
     
     def _map_severity(self, severity: str) -> str:
-        """Map semgrep severity to standard severity."""
+        """Map opengrep severity to standard severity."""
         mapping = {
             "ERROR": "high",
             "WARNING": "medium",
@@ -91,7 +91,7 @@ class SemgrepScanner(BaseScanner):
         return mapping.get(severity.upper(), "info")
     
     def _map_category(self, metadata: dict) -> str:
-        """Map semgrep category to standard category."""
+        """Map opengrep category to standard category."""
         category = metadata.get("category", "").lower()
         if "security" in category:
             return "security"
@@ -104,7 +104,7 @@ class SemgrepScanner(BaseScanner):
         return "best_practice"
     
     def _map_confidence(self, confidence: str) -> float:
-        """Map semgrep confidence to float."""
+        """Map opengrep confidence to float."""
         mapping = {
             "HIGH": 0.9,
             "MEDIUM": 0.7,
