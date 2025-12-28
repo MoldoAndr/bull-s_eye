@@ -234,7 +234,7 @@ class ComponentDetector:
             "language": primary_language,
             "file_count": len(files),
             "line_count": total_lines,
-            "files": files[:settings.max_files_per_component],  # Limit files
+            "files": files,
             "language_breakdown": dict(language_counts),
         }
     
@@ -292,14 +292,6 @@ class ComponentDetector:
         
         # Skip test files for LLM analysis (they're not business logic)
         if self._is_test_file(file_name):
-            return False
-        
-        # Skip very small files (likely boilerplate)
-        try:
-            content = self.get_file_content(file_path)
-            if content and len(content.strip()) < 100:
-                return False
-        except:
             return False
         
         return True

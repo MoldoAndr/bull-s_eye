@@ -16,9 +16,9 @@ from config import settings
 
 logger = structlog.get_logger()
 
-# Global lock to ensure sequential requests
-_ollama_lock = asyncio.Lock()
-_last_request_time = 0.0
+# Per-API-key locks to allow parallelism across keys while keeping each key sequential.
+_ollama_locks: Dict[str, asyncio.Lock] = {}
+_last_request_times: Dict[str, float] = {}
 
 
 class OllamaCloudClient:
@@ -35,6 +35,7 @@ class OllamaCloudClient:
         self.model = model or settings.ollama_model
         self.timeout = timeout or settings.ollama_timeout
         self.logger = structlog.get_logger().bind(component="ollama_cloud")
+        self._lock_key = self.api_key or "default"
         
         if not self.api_key:
             raise ValueError("OLLAMA_API_KEY is required for Ollama Cloud API")
@@ -45,19 +46,66 @@ class OllamaCloudClient:
             "Authorization": f"Bearer {self.api_key}",
             "Content-Type": "application/json",
         }
+
+    def _get_lock(self) -> asyncio.Lock:
+        """Get per-key lock to allow parallelism across API keys."""
+        lock = _ollama_locks.get(self._lock_key)
+        if lock is None:
+            lock = asyncio.Lock()
+            _ollama_locks[self._lock_key] = lock
+        return lock
     
     async def _wait_for_rate_limit(self):
         """Ensure minimum delay between requests (sequential only)."""
-        global _last_request_time
-        
-        elapsed = time.time() - _last_request_time
+        last_request_time = _last_request_times.get(self._lock_key, 0.0)
+        elapsed = time.time() - last_request_time
         min_delay = settings.llm_request_delay
         
         if elapsed < min_delay:
             await asyncio.sleep(min_delay - elapsed)
-        
-        _last_request_time = time.time()
+        _last_request_times[self._lock_key] = time.time()
     
+    async def _chat_once(
+        self,
+        messages: List[Dict[str, str]],
+        temperature: float,
+        model: str,
+    ) -> str:
+        """Send a single chat request with per-key rate limiting."""
+        async with self._get_lock():
+            await self._wait_for_rate_limit()
+
+            payload = {
+                "model": model,
+                "messages": messages,
+                "stream": False,
+            }
+
+            self.logger.debug(
+                "Sending chat request",
+                model=model,
+                messages_count=len(messages)
+            )
+
+            async with httpx.AsyncClient(timeout=self.timeout) as client:
+                response = await client.post(
+                    self.api_url,
+                    headers=self._get_headers(),
+                    json=payload,
+                )
+                response.raise_for_status()
+                result = response.json()
+
+                # Extract content from response
+                content = result.get("message", {}).get("content", "")
+
+                self.logger.debug(
+                    "Chat response received",
+                    response_length=len(content)
+                )
+
+                return content
+
     @retry(
         stop=stop_after_attempt(2),
         wait=wait_exponential(min=2, max=20),
@@ -72,83 +120,50 @@ class OllamaCloudClient:
     ) -> str:
         """
         Send a chat completion request to Ollama Cloud.
-        Uses global lock to ensure sequential requests.
+        Uses per-key locking to ensure sequential requests per API key.
         """
-        async with _ollama_lock:
-            await self._wait_for_rate_limit()
-            
-            use_model = model or self.model
-            
-            payload = {
-                "model": use_model,
-                "messages": messages,
-                "stream": False,
-            }
-            
-            self.logger.debug(
-                "Sending chat request",
-                model=use_model,
-                messages_count=len(messages)
+        use_model = model or self.model
+
+        try:
+            return await self._chat_once(messages, temperature, use_model)
+        except httpx.HTTPStatusError as e:
+            self.logger.error(
+                "Ollama Cloud API HTTP error",
+                status_code=e.response.status_code,
+                response_text=e.response.text[:500],
+                model=use_model
             )
-            
-            async with httpx.AsyncClient(timeout=self.timeout) as client:
-                try:
-                    response = await client.post(
-                        self.api_url,
-                        headers=self._get_headers(),
-                        json=payload,
-                    )
-                    response.raise_for_status()
-                    result = response.json()
-                    
-                    # Extract content from response
-                    content = result.get("message", {}).get("content", "")
-                    
-                    self.logger.debug(
-                        "Chat response received",
-                        response_length=len(content)
-                    )
-                    
-                    return content
-                    
-                except httpx.HTTPStatusError as e:
-                    self.logger.error(
-                        "Ollama Cloud API HTTP error",
-                        status_code=e.response.status_code,
-                        response_text=e.response.text[:500],
-                        model=use_model
-                    )
-                    # Try fallback to a different model if unauthorized
-                    if e.response.status_code == 401 and allow_fallback:
-                        self.logger.warning("Unauthorized for model, trying fallback", model=use_model)
-                        fallback_models = ["deepseek-v3.2:cloud", "gpt-oss:120b-cloud", "kimi-k2-thinking:cloud"]
-                        for fallback in fallback_models:
-                            if fallback != use_model:
-                                try:
-                                    self.logger.info("Attempting fallback model", fallback=fallback)
-                                    return await self.chat(messages, temperature, fallback, allow_fallback=False)
-                                except Exception as fallback_err:
-                                    self.logger.warning("Fallback model failed", fallback=fallback, error=str(fallback_err))
-                                    continue
-                    # Also handle 404 (model not found)
-                    if e.response.status_code == 404 and allow_fallback:
-                        self.logger.warning("Model not found, trying fallback", model=use_model)
-                        fallback_models = ["deepseek-v3.2:cloud", "gpt-oss:120b-cloud", "kimi-k2-thinking:cloud"]
-                        for fallback in fallback_models:
-                            if fallback != use_model:
-                                try:
-                                    self.logger.info("Attempting fallback model", fallback=fallback)
-                                    return await self.chat(messages, temperature, fallback, allow_fallback=False)
-                                except Exception as fallback_err:
-                                    self.logger.warning("Fallback model failed", fallback=fallback, error=str(fallback_err))
-                                    continue
-                    raise
-                except httpx.TimeoutException:
-                    self.logger.error("Ollama Cloud API timeout", model=use_model)
-                    raise
-                except Exception as e:
-                    self.logger.error("Ollama Cloud API error", error=str(e))
-                    raise
+            # Try fallback to a different model if unauthorized
+            if e.response.status_code == 401 and allow_fallback:
+                self.logger.warning("Unauthorized for model, trying fallback", model=use_model)
+                fallback_models = ["deepseek-v3.2:cloud", "gpt-oss:120b-cloud", "kimi-k2-thinking:cloud"]
+                for fallback in fallback_models:
+                    if fallback != use_model:
+                        try:
+                            self.logger.info("Attempting fallback model", fallback=fallback)
+                            return await self._chat_once(messages, temperature, fallback)
+                        except Exception as fallback_err:
+                            self.logger.warning("Fallback model failed", fallback=fallback, error=str(fallback_err))
+                            continue
+            # Also handle 404 (model not found)
+            if e.response.status_code == 404 and allow_fallback:
+                self.logger.warning("Model not found, trying fallback", model=use_model)
+                fallback_models = ["deepseek-v3.2:cloud", "gpt-oss:120b-cloud", "kimi-k2-thinking:cloud"]
+                for fallback in fallback_models:
+                    if fallback != use_model:
+                        try:
+                            self.logger.info("Attempting fallback model", fallback=fallback)
+                            return await self._chat_once(messages, temperature, fallback)
+                        except Exception as fallback_err:
+                            self.logger.warning("Fallback model failed", fallback=fallback, error=str(fallback_err))
+                            continue
+            raise
+        except httpx.TimeoutException:
+            self.logger.error("Ollama Cloud API timeout", model=use_model)
+            raise
+        except Exception as e:
+            self.logger.error("Ollama Cloud API error", error=str(e))
+            raise
     
     async def analyze_code(
         self,
@@ -250,6 +265,64 @@ Respond with JSON in this exact format:
                 "purpose": "Unknown",
                 "error": str(e)
             }
+
+    async def filter_security_irrelevant_files(
+        self,
+        file_paths: List[str],
+    ) -> List[str]:
+        """
+        Identify files that are unlikely to contain security-relevant logic based on path/name only.
+        """
+        if not file_paths:
+            return []
+
+        system_message = {
+            "role": "system",
+            "content": (
+                "You are a security triage assistant. Decide which files are unlikely to contain "
+                "security-relevant logic based on filename/path only. Prefer skipping build tooling, "
+                "configs, docs, tests, assets, generated code, and lockfiles. If unsure, keep the file."
+            ),
+        }
+
+        file_list = "\n".join(f"- {path}" for path in file_paths)
+        user_message = {
+            "role": "user",
+            "content": f"""Given the file paths below, return JSON with two arrays: skip and keep.
+
+Rules:
+- Only return paths from the provided list.
+- Base decisions only on path/name (no file contents).
+- If unsure, keep the file.
+
+Files:
+{file_list}
+
+Respond with JSON:
+{{
+  "skip": ["path/to/file.ext"],
+  "keep": ["path/to/other.ext"]
+}}""",
+        }
+
+        try:
+            response = await self.chat([system_message, user_message], temperature=0.0)
+
+            if "```json" in response:
+                response = response.split("```json")[1].split("```")[0]
+            elif "```" in response:
+                response = response.split("```")[1].split("```")[0]
+
+            result = json.loads(response.strip())
+            skip_list = result.get("skip", [])
+            if not isinstance(skip_list, list):
+                return []
+
+            return [path for path in skip_list if isinstance(path, str)]
+
+        except Exception as e:
+            self.logger.warning("File triage failed", error=str(e))
+            return []
     
     async def summarize_component(
         self,

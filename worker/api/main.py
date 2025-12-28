@@ -89,6 +89,7 @@ class JobCreate(BaseModel):
     name: Optional[str] = Field(None, description="Job name (auto-generated if not provided)")
     model: str = Field(default="deepseek-v3.2:cloud", description="Ollama model to use for analysis")
     ollama_api_key: Optional[str] = Field(None, description="Optional per-job Ollama Cloud API key")
+    ollama_api_keys: Optional[List[str]] = Field(None, description="Optional list of per-job Ollama Cloud API keys")
 
 
 class JobStatus(BaseModel):
@@ -208,7 +209,19 @@ async def create_job(job_data: JobCreate, background_tasks: BackgroundTasks):
     # Create job in database
     config = {}
     if job_data.ollama_api_key:
-        config["ollama_api_key"] = job_data.ollama_api_key
+        config["ollama_api_key"] = job_data.ollama_api_key.strip()
+    if job_data.ollama_api_keys:
+        normalized_keys = []
+        seen = set()
+        for key in job_data.ollama_api_keys:
+            if not key:
+                continue
+            trimmed = key.strip()
+            if trimmed and trimmed not in seen:
+                normalized_keys.append(trimmed)
+                seen.add(trimmed)
+        if normalized_keys:
+            config["ollama_api_keys"] = normalized_keys
 
     job_id = db.create_job(
         repo_url=job_data.repo_url,
@@ -295,17 +308,29 @@ async def stop_job(job_id: str):
     
     # Stop Celery task if it exists
     if job.get("celery_task_id"):
-        celery_app.control.revoke(job["celery_task_id"], terminate=True)
-        logger.info(f"Revoked Celery task {job['celery_task_id']} for job {job_id}")
+        try:
+            celery_app.control.revoke(job["celery_task_id"], terminate=True, signal="SIGTERM")
+            logger.info(f"Revoked Celery task {job['celery_task_id']} for job {job_id}")
+        except Exception as e:
+            logger.warning(
+                "Failed to revoke Celery task",
+                job_id=job_id,
+                task_id=job.get("celery_task_id"),
+                error=str(e),
+            )
     
     # Update job status to cancelled
-    db.update_job_status(
-        job_id=job_id,
-        status="cancelled",
-        message="Job stopped by user",
-        progress=job["progress"],
-        error="Job was cancelled by user"
-    )
+    try:
+        db.update_job_status(
+            job_id=job_id,
+            status="cancelled",
+            message="Job stopped by user",
+            progress=job["progress"],
+            error="Job was cancelled by user"
+        )
+    except Exception as e:
+        logger.error("Failed to mark job as cancelled", job_id=job_id, error=str(e))
+        raise HTTPException(status_code=500, detail="Failed to stop job")
     
     logger.info(f"Job {job_id} stopped by user")
     

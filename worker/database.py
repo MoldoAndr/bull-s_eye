@@ -35,6 +35,8 @@ class Database:
         if schema_path:
             with self.get_connection() as conn:
                 conn.executescript(schema_path.read_text())
+
+        self._ensure_jobs_schema()
         
         # Migration: Add celery_task_id to jobs if it doesn't exist
         try:
@@ -44,6 +46,93 @@ class Database:
         except sqlite3.OperationalError as e:
             if "duplicate column name" not in str(e).lower():
                 print(f"Migration error: {e}")
+
+    def _ensure_jobs_schema(self):
+        """Ensure jobs table supports the cancelled status and new columns."""
+        with self.get_connection() as conn:
+            row = conn.execute(
+                "SELECT sql FROM sqlite_master WHERE type='table' AND name='jobs'"
+            ).fetchone()
+            if not row or not row["sql"]:
+                return
+
+            create_sql = row["sql"]
+            if "cancelled" in create_sql:
+                return
+
+            current_columns = [
+                col["name"]
+                for col in conn.execute("PRAGMA table_info(jobs)").fetchall()
+            ]
+            target_columns = [
+                "id",
+                "name",
+                "repo_url",
+                "branch",
+                "commit_hash",
+                "status",
+                "status_message",
+                "progress",
+                "progress_total",
+                "progress_detail",
+                "model",
+                "celery_task_id",
+                "created_at",
+                "started_at",
+                "completed_at",
+                "error_message",
+                "config",
+            ]
+            common_columns = [col for col in target_columns if col in current_columns]
+
+            conn.execute("DROP TABLE IF EXISTS jobs_new")
+            conn.execute(
+                """
+                CREATE TABLE jobs_new (
+                    id TEXT PRIMARY KEY,
+                    name TEXT NOT NULL,
+                    repo_url TEXT NOT NULL,
+                    branch TEXT DEFAULT 'main',
+                    commit_hash TEXT,
+                    status TEXT DEFAULT 'pending' CHECK (
+                        status IN (
+                            'pending',
+                            'cloning',
+                            'detecting_components',
+                            'scanning',
+                            'analyzing',
+                            'generating_report',
+                            'completed',
+                            'failed',
+                            'cancelled'
+                        )
+                    ),
+                    status_message TEXT,
+                    progress INTEGER DEFAULT 0,
+                    progress_total INTEGER DEFAULT 100,
+                    progress_detail TEXT,
+                    model TEXT NOT NULL,
+                    celery_task_id TEXT,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    started_at TIMESTAMP,
+                    completed_at TIMESTAMP,
+                    error_message TEXT,
+                    config TEXT
+                )
+                """
+            )
+
+            if common_columns:
+                columns_csv = ", ".join(common_columns)
+                conn.execute(
+                    f"INSERT INTO jobs_new ({columns_csv}) SELECT {columns_csv} FROM jobs"
+                )
+
+            conn.execute("DROP TABLE jobs")
+            conn.execute("ALTER TABLE jobs_new RENAME TO jobs")
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_jobs_status ON jobs(status)")
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_jobs_created ON jobs(created_at DESC)")
+            print("Migrated jobs table to include cancelled status")
     
     @contextmanager
     def get_connection(self):

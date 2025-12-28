@@ -41,7 +41,7 @@ export function NewJobDialog({
   const [selectedModel, setSelectedModel] = useState("");
   const [customModel, setCustomModel] = useState("");
   const [showModelDropdown, setShowModelDropdown] = useState(false);
-  const [apiKey, setApiKey] = useState("");
+  const [apiKeys, setApiKeys] = useState<string[]>([""]);
 
   // Fetch available models
   const { data: models = [] } = useQuery({
@@ -65,7 +65,7 @@ export function NewJobDialog({
       setName("");
       setRepoUrl("");
       setBranch("main");
-      setApiKey("");
+      setApiKeys([""]);
       setCustomModel("");
       onSuccess();
     },
@@ -76,7 +76,7 @@ export function NewJobDialog({
 
     const repoName = repoUrl.split("/").pop()?.replace(".git", "") || "Analysis";
     
-    const trimmedApiKey = apiKey.trim();
+    const trimmedApiKeys = apiKeys.map((key) => key.trim()).filter(Boolean);
     const resolvedModel = customModel.trim() || selectedModel;
     if (!resolvedModel) return;
     const data: CreateJobRequest = {
@@ -84,7 +84,7 @@ export function NewJobDialog({
       branch: branch,
       name: name || `Analysis of ${repoName}`,
       model: resolvedModel,
-      ...(trimmedApiKey ? { ollama_api_key: trimmedApiKey } : {}),
+      ...(trimmedApiKeys.length ? { ollama_api_keys: trimmedApiKeys } : {}),
     };
 
     createMutation.mutate(data);
@@ -234,16 +234,49 @@ export function NewJobDialog({
           {/* API Key */}
           <div>
             <label className="block text-[10px] uppercase tracking-widest font-bold mb-2 text-primary/80">
-              Ollama API Key <span className="text-muted-foreground lowercase font-normal">(optional)</span>
+              Ollama API Keys <span className="text-muted-foreground lowercase font-normal">(optional)</span>
             </label>
-            <input
-              type="password"
-              value={apiKey}
-              onChange={(e) => setApiKey(e.target.value)}
-              placeholder="sk-..."
-              autoComplete="off"
-              className="w-full px-4 py-3 bg-black/60 border border-primary/30 rounded-none focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-all font-mono text-sm"
-            />
+            <div className="space-y-2">
+              {apiKeys.map((key, index) => (
+                <div key={index} className="flex gap-2">
+                  <input
+                    type="password"
+                    value={key}
+                    onChange={(e) => {
+                      const nextKeys = [...apiKeys];
+                      nextKeys[index] = e.target.value;
+                      setApiKeys(nextKeys);
+                    }}
+                    placeholder="sk-..."
+                    autoComplete="off"
+                    className="flex-1 px-4 py-3 bg-black/60 border border-primary/30 rounded-none focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-all font-mono text-sm"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (apiKeys.length === 1) {
+                        setApiKeys([""]);
+                        return;
+                      }
+                      setApiKeys(apiKeys.filter((_, idx) => idx !== index));
+                    }}
+                    className="px-3 border border-primary/30 hover:bg-primary/10 text-[10px] uppercase font-bold"
+                  >
+                    Remove
+                  </button>
+                </div>
+              ))}
+            </div>
+            <div className="mt-2 flex items-center justify-between text-[10px] uppercase tracking-widest font-mono text-muted-foreground">
+              <span>Multiple keys enable parallel LLM workers.</span>
+              <button
+                type="button"
+                onClick={() => setApiKeys([...apiKeys, ""])}
+                className="px-3 py-1 border border-primary/30 hover:bg-primary/10 text-primary font-bold"
+              >
+                Add Key
+              </button>
+            </div>
           </div>
 
           {/* Error Message */}
