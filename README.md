@@ -1,10 +1,13 @@
-# 🎯 Bull's Eye
 
 <div align="center">
 
-### *Intelligent codebase analysis that actually works*
+**Bull's eye 🦬**
+
+<div align="center">
 
 **AI-powered security scanning**
+</div>
+<img width="50%" src="logo.png">
 
 [![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?style=for-the-badge&logo=docker&logoColor=white)](https://www.docker.com/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-109989?style=for-the-badge&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
@@ -17,7 +20,6 @@
     │  🤖 Analyze → 📊 Report → 💰 Profit │
     └─────────────────────────────────────┘
 ```
-
 </div>
 
 ---
@@ -58,14 +60,11 @@ docker-compose up -d
 ```bash
 # List models
 curl localhost:8000/api/models
-
 # Start analysis
 curl -X POST localhost:8000/api/jobs -H "Content-Type: application/json" \
   -d '{"repo_url":"https://github.com/user/repo","model":"qwen2.5-coder:7b"}'
-
 # Stream progress
 curl localhost:8000/api/jobs/{id}/stream
-
 # Get findings
 curl localhost:8000/api/jobs/{id}/findings
 ```
