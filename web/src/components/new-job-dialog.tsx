@@ -5,6 +5,25 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { X, Loader2, Sparkles, ChevronDown } from "lucide-react";
 import { api, CreateJobRequest, Model } from "@/lib/api";
 
+const DEFAULT_MODELS: Model[] = [
+  {
+    id: "deepseek-v3.2:cloud",
+    name: "DeepSeek V3.2 Cloud",
+    description: "Latest DeepSeek model for strong reasoning",
+  },
+  {
+    id: "gpt-oss:120b-cloud",
+    name: "GPT-OSS 120B Cloud",
+    description: "Powerful open-source model for complex analysis",
+  },
+  {
+    id: "kimi-k2-thinking:cloud",
+    name: "Kimi K2 Thinking Cloud",
+    description: "Long-form reasoning and deep analysis",
+  },
+];
+const ALLOWED_MODEL_IDS = new Set(DEFAULT_MODELS.map((model) => model.id));
+
 interface NewJobDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -21,7 +40,6 @@ export function NewJobDialog({
   const [branch, setBranch] = useState("main");
   const [selectedModel, setSelectedModel] = useState("");
   const [customModel, setCustomModel] = useState("");
-  const [isCustomModel, setIsCustomModel] = useState(false);
   const [showModelDropdown, setShowModelDropdown] = useState(false);
   const [apiKey, setApiKey] = useState("");
 
@@ -30,13 +48,16 @@ export function NewJobDialog({
     queryKey: ["models"],
     queryFn: api.getModels,
   });
+  const allowedModels = models.filter((model) => ALLOWED_MODEL_IDS.has(model.id));
+  const modelOptions = allowedModels.length > 0 ? allowedModels : DEFAULT_MODELS;
 
   // Set default model when models are loaded
   useEffect(() => {
-    if (models.length > 0 && !selectedModel) {
-      setSelectedModel(models[0].id);
+    if (!selectedModel) {
+      const fallbackModel = modelOptions[0]?.id;
+      if (fallbackModel) setSelectedModel(fallbackModel);
     }
-  }, [models, selectedModel]);
+  }, [modelOptions, selectedModel]);
 
   const createMutation = useMutation({
     mutationFn: (data: CreateJobRequest) => api.createJob(data),
@@ -45,6 +66,7 @@ export function NewJobDialog({
       setRepoUrl("");
       setBranch("main");
       setApiKey("");
+      setCustomModel("");
       onSuccess();
     },
   });
@@ -55,18 +77,20 @@ export function NewJobDialog({
     const repoName = repoUrl.split("/").pop()?.replace(".git", "") || "Analysis";
     
     const trimmedApiKey = apiKey.trim();
+    const resolvedModel = customModel.trim() || selectedModel;
+    if (!resolvedModel) return;
     const data: CreateJobRequest = {
       repo_url: repoUrl,
       branch: branch,
       name: name || `Analysis of ${repoName}`,
-      model: isCustomModel ? customModel : selectedModel,
+      model: resolvedModel,
       ...(trimmedApiKey ? { ollama_api_key: trimmedApiKey } : {}),
     };
 
     createMutation.mutate(data);
   };
 
-  const selectedModelInfo = models.find((m) => m.id === selectedModel);
+  const selectedModelInfo = modelOptions.find((m) => m.id === selectedModel);
 
   if (!open) return null;
 
@@ -147,49 +171,31 @@ export function NewJobDialog({
               AI Model <span className="text-red-500">*</span>
             </label>
             <div className="relative">
-              {!isCustomModel ? (
-                <button
-                  type="button"
-                  onClick={() => setShowModelDropdown(!showModelDropdown)}
-                  className="w-full px-4 py-3 bg-black/60 border border-primary/30 rounded-none focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-all text-left flex items-center justify-between"
-                >
-                  <div>
-                    <div className="font-bold font-mono text-sm text-primary">{selectedModelInfo?.name || selectedModel || "Select a model"}</div>
-                    <div className="text-[10px] text-muted-foreground uppercase tracking-tighter">
-                      {selectedModelInfo?.description || "Choose from available models"}
-                    </div>
+              <button
+                type="button"
+                onClick={() => setShowModelDropdown(!showModelDropdown)}
+                className="w-full px-4 py-3 bg-black/60 border border-primary/30 rounded-none focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-all text-left flex items-center justify-between"
+              >
+                <div>
+                  <div className="font-bold font-mono text-sm text-primary">{selectedModelInfo?.name || selectedModel || "Select a model"}</div>
+                  <div className="text-[10px] text-muted-foreground uppercase tracking-tighter">
+                    {selectedModelInfo?.description || "Choose from available models"}
                   </div>
-                  <ChevronDown className={`h-5 w-5 text-primary transition-transform ${showModelDropdown ? 'rotate-180' : ''}`} />
-                </button>
-              ) : (
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    value={customModel}
-                    onChange={(e) => setCustomModel(e.target.value)}
-                    placeholder="Enter model name (e.g. llama3:70b)"
-                    className="flex-1 px-4 py-3 bg-black/60 border border-primary/30 rounded-none focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-all font-mono text-sm"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setIsCustomModel(false)}
-                    className="px-3 border border-primary/30 hover:bg-primary/10 text-[10px] uppercase font-bold"
-                  >
-                    List
-                  </button>
                 </div>
-              )}
+                <ChevronDown className={`h-5 w-5 text-primary transition-transform ${showModelDropdown ? "rotate-180" : ""}`} />
+              </button>
 
               {/* Dropdown */}
-              {showModelDropdown && !isCustomModel && (
+              {showModelDropdown && (
                 <div className="absolute z-20 w-full mt-1 bg-black border border-primary/50 rounded-none shadow-[0_0_20px_rgba(4,6,89,0.8)] max-h-64 overflow-y-auto">
-                  {models.length > 0 ? (
-                    models.map((model) => (
+                  {modelOptions.length > 0 ? (
+                    modelOptions.map((model) => (
                       <button
                         key={model.id}
                         type="button"
                         onClick={() => {
                           setSelectedModel(model.id);
+                          setCustomModel("");
                           setShowModelDropdown(false);
                         }}
                         className={`w-full px-4 py-3 text-left hover:bg-primary/20 transition-colors border-b border-primary/10 last:border-0 ${
@@ -203,19 +209,26 @@ export function NewJobDialog({
                   ) : (
                     <div className="px-4 py-3 text-[10px] text-muted-foreground uppercase italic">No models found</div>
                   )}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsCustomModel(true);
-                      setShowModelDropdown(false);
-                    }}
-                    className="w-full px-4 py-3 text-left hover:bg-primary/20 transition-colors text-primary font-bold font-mono text-xs border-t border-primary/30"
-                  >
-                    + ENTER CUSTOM MODEL NAME
-                  </button>
                 </div>
               )}
             </div>
+          </div>
+
+          {/* Custom Model */}
+          <div>
+            <label className="block text-[10px] uppercase tracking-widest font-bold mb-2 text-primary/80">
+              Custom Model <span className="text-muted-foreground lowercase font-normal">(optional)</span>
+            </label>
+            <input
+              type="text"
+              value={customModel}
+              onChange={(e) => setCustomModel(e.target.value)}
+              placeholder="Enter model name (e.g. deepseek-v3.2:cloud)"
+              className="w-full px-4 py-3 bg-black/60 border border-primary/30 rounded-none focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-all font-mono text-sm"
+            />
+            <p className="mt-2 text-[10px] text-muted-foreground uppercase tracking-widest font-mono">
+              Custom entry overrides the list selection.
+            </p>
           </div>
 
           {/* API Key */}
@@ -253,7 +266,7 @@ export function NewJobDialog({
             </button>
             <button
               type="submit"
-              disabled={createMutation.isPending || !repoUrl}
+              disabled={createMutation.isPending || !repoUrl || !(customModel.trim() || selectedModel)}
               className="cyber-button flex-1 px-4 py-3 bg-primary text-primary-foreground font-bold uppercase text-xs tracking-widest disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
               {createMutation.isPending ? (

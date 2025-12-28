@@ -53,8 +53,8 @@ services:
     environment:
       - REDIS_URL=redis://redis:6379/0
       - OLLAMA_API_KEY=${OLLAMA_API_KEY:-}
-      - OLLAMA_MODEL=${OLLAMA_MODEL:-deepseek-v3.1:671b-cloud}
-      - OLLAMA_MODELS=${OLLAMA_MODELS:-gpt-oss:120b-cloud,deepseek-v3.1:671b,qwen3-coder:480b-cloud,glm-4.7:cloud}
+      - OLLAMA_MODEL=${OLLAMA_MODEL:-deepseek-v3.2:cloud}
+      - OLLAMA_MODELS=${OLLAMA_MODELS:-deepseek-v3.2:cloud,gpt-oss:120b-cloud,kimi-k2-thinking:cloud}
       - WORKER_CONCURRENCY=10
       - LOG_LEVEL=INFO
       - API_KEY=${API_KEY:-bullseye_secret_key_2025}
@@ -81,8 +81,8 @@ services:
     environment:
       - REDIS_URL=redis://redis:6379/0
       - OLLAMA_API_KEY=${OLLAMA_API_KEY:-}
-      - OLLAMA_MODEL=${OLLAMA_MODEL:-deepseek-v3.1:671b-cloud}
-      - OLLAMA_MODELS=${OLLAMA_MODELS:-gpt-oss:120b-cloud,deepseek-v3.1:671b,qwen3-coder:480b-cloud,glm-4.7:cloud}
+      - OLLAMA_MODEL=${OLLAMA_MODEL:-deepseek-v3.2:cloud}
+      - OLLAMA_MODELS=${OLLAMA_MODELS:-deepseek-v3.2:cloud,gpt-oss:120b-cloud,kimi-k2-thinking:cloud}
       - API_KEY=${API_KEY:-bullseye_secret_key_2025}
     ports:
       - "8000:8000"

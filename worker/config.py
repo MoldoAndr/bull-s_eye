@@ -12,9 +12,9 @@ import json
 
 # Available Ollama Cloud Models
 OLLAMA_CLOUD_MODELS = [
+    {"id": "deepseek-v3.2:cloud", "name": "DeepSeek V3.2 Cloud", "description": "Latest DeepSeek model for strong reasoning"},
     {"id": "gpt-oss:120b-cloud", "name": "GPT-OSS 120B Cloud", "description": "Powerful open-source model for complex analysis"},
-    {"id": "deepseek-v3.1:671b-cloud", "name": "DeepSeek V3.1 671B Cloud", "description": "Latest DeepSeek flagship model for deep reasoning"},
-    {"id": "qwen3-next:80b-cloud", "name": "Qwen3 Next 80B Cloud", "description": "Next-gen Qwen model optimized for code and logic"},
+    {"id": "kimi-k2-thinking:cloud", "name": "Kimi K2 Thinking Cloud", "description": "Long-form reasoning and deep analysis"},
 ]
 
 
@@ -43,7 +43,7 @@ class Settings(BaseSettings):
         description="Ollama Cloud API key (Bearer token)"
     )
     ollama_model: str = Field(
-        default="deepseek-v3.1:671b-cloud",
+        default="deepseek-v3.2:cloud",
         description="Default Ollama model for analysis"
     )
     ollama_models: Optional[str] = Field(

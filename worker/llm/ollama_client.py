@@ -59,15 +59,16 @@ class OllamaCloudClient:
         _last_request_time = time.time()
     
     @retry(
-        stop=stop_after_attempt(3),
-        wait=wait_exponential(min=2, max=30),
-        retry=retry_if_exception_type((httpx.HTTPError, httpx.TimeoutException))
+        stop=stop_after_attempt(2),
+        wait=wait_exponential(min=2, max=20),
+        retry=retry_if_exception_type((httpx.TimeoutException, httpx.ConnectError))
     )
     async def chat(
         self,
         messages: List[Dict[str, str]],
         temperature: float = 0.3,
         model: Optional[str] = None,
+        allow_fallback: bool = True,
     ) -> str:
         """
         Send a chat completion request to Ollama Cloud.
@@ -117,6 +118,30 @@ class OllamaCloudClient:
                         response_text=e.response.text[:500],
                         model=use_model
                     )
+                    # Try fallback to a different model if unauthorized
+                    if e.response.status_code == 401 and allow_fallback:
+                        self.logger.warning("Unauthorized for model, trying fallback", model=use_model)
+                        fallback_models = ["deepseek-v3.2:cloud", "gpt-oss:120b-cloud", "kimi-k2-thinking:cloud"]
+                        for fallback in fallback_models:
+                            if fallback != use_model:
+                                try:
+                                    self.logger.info("Attempting fallback model", fallback=fallback)
+                                    return await self.chat(messages, temperature, fallback, allow_fallback=False)
+                                except Exception as fallback_err:
+                                    self.logger.warning("Fallback model failed", fallback=fallback, error=str(fallback_err))
+                                    continue
+                    # Also handle 404 (model not found)
+                    if e.response.status_code == 404 and allow_fallback:
+                        self.logger.warning("Model not found, trying fallback", model=use_model)
+                        fallback_models = ["deepseek-v3.2:cloud", "gpt-oss:120b-cloud", "kimi-k2-thinking:cloud"]
+                        for fallback in fallback_models:
+                            if fallback != use_model:
+                                try:
+                                    self.logger.info("Attempting fallback model", fallback=fallback)
+                                    return await self.chat(messages, temperature, fallback, allow_fallback=False)
+                                except Exception as fallback_err:
+                                    self.logger.warning("Fallback model failed", fallback=fallback, error=str(fallback_err))
+                                    continue
                     raise
                 except httpx.TimeoutException:
                     self.logger.error("Ollama Cloud API timeout", model=use_model)
@@ -365,7 +390,7 @@ Respond with JSON:
         component_summaries: List[Dict[str, Any]],
     ) -> str:
         """
-        Generate an executive summary report.
+        Generate an executive summary report with graceful degradation.
         """
         # Build component context
         components_text = []
@@ -395,7 +420,7 @@ Findings Summary:
 - Total: {findings_summary.get('total', 0)}
 
 Components Analyzed:
-{chr(10).join(components_text)}
+{chr(10).join(components_text) if components_text else 'No components analyzed'}
 
 Write a 2-3 paragraph executive summary covering:
 1. Overall security posture
@@ -406,10 +431,31 @@ Keep it professional and actionable."""
         }
         
         try:
-            return await self.chat([system_message, user_message], temperature=0.5)
+            return await self.chat([system_message, user_message], temperature=0.5, allow_fallback=True)
         except Exception as e:
             self.logger.error("Executive summary generation failed", error=str(e))
-            return f"Executive summary generation failed: {str(e)}"
+            # Provide a meaningful fallback summary
+            total = findings_summary.get('total', 0)
+            critical = findings_summary.get('critical', 0)
+            high = findings_summary.get('high', 0)
+            
+            severity_assessment = "low risk"
+            if critical > 0:
+                severity_assessment = "critical risk"
+            elif high > 5:
+                severity_assessment = "high risk"
+            elif high > 0:
+                severity_assessment = "moderate risk"
+            
+            return f"""**Executive Summary**
+
+The analysis of {job_name} has identified {total} security and quality findings across the codebase, indicating a **{severity_assessment}** security posture. The findings include {critical} critical, {high} high, {findings_summary.get('medium', 0)} medium, and {findings_summary.get('low', 0)} low severity issues.
+
+**Key Concerns:** {"Critical vulnerabilities require immediate remediation. " if critical > 0 else ""}{"Multiple high-severity issues should be addressed promptly. " if high > 0 else ""}The identified issues span security, code quality, and best practice violations.
+
+**Recommendations:** Prioritize remediation of critical and high-severity findings, implement automated security scanning in CI/CD, conduct code reviews for security-sensitive changes, and establish secure coding guidelines for the development team.
+
+(Note: This is an automated fallback summary. Full AI-powered analysis was unavailable.)"""
 
 
 # Convenience function to get client instance

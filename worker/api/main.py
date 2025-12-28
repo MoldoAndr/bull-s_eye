@@ -87,7 +87,7 @@ class JobCreate(BaseModel):
     repo_url: str = Field(..., description="Git repository URL")
     branch: str = Field(default="main", description="Branch to analyze")
     name: Optional[str] = Field(None, description="Job name (auto-generated if not provided)")
-    model: str = Field(default="deepseek-r1:70b", description="Ollama model to use for analysis")
+    model: str = Field(default="deepseek-v3.2:cloud", description="Ollama model to use for analysis")
     ollama_api_key: Optional[str] = Field(None, description="Optional per-job Ollama Cloud API key")
 
 
@@ -529,7 +529,7 @@ async def get_stats():
 async def webhook_analyze(
     repo_url: str,
     branch: str = "main",
-    model: str = "deepseek-r1:70b",
+    model: str = "deepseek-v3.2:cloud",
     name: Optional[str] = None,
     background_tasks: BackgroundTasks = None,
 ):
