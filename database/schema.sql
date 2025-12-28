@@ -8,7 +8,7 @@ CREATE TABLE IF NOT EXISTS jobs (
     repo_url TEXT NOT NULL,
     branch TEXT DEFAULT 'main',
     commit_hash TEXT,
-    status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'cloning', 'detecting_components', 'scanning', 'analyzing', 'generating_report', 'completed', 'failed')),
+    status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'cloning', 'detecting_components', 'scanning', 'analyzing', 'generating_report', 'completed', 'failed', 'cancelled')),
     status_message TEXT,
     progress INTEGER DEFAULT 0,
     progress_total INTEGER DEFAULT 100,

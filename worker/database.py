@@ -510,6 +510,18 @@ class Database:
             stats['findings'] = dict(row)
             
             return stats
+    
+    def delete_job(self, job_id: str):
+        """Delete a job and all related data."""
+        with self.get_connection() as conn:
+            # Delete all related data in order due to foreign keys
+            conn.execute("DELETE FROM status_updates WHERE job_id = ?", (job_id,))
+            conn.execute("DELETE FROM reports WHERE job_id = ?", (job_id,))
+            conn.execute("DELETE FROM scanner_results WHERE job_id = ?", (job_id,))
+            conn.execute("DELETE FROM findings WHERE job_id = ?", (job_id,))
+            conn.execute("DELETE FROM files WHERE job_id = ?", (job_id,))
+            conn.execute("DELETE FROM components WHERE job_id = ?", (job_id,))
+            conn.execute("DELETE FROM jobs WHERE id = ?", (job_id,))
 
 
 # Global database instance

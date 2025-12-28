@@ -104,6 +104,14 @@ class Settings(BaseSettings):
         default=50,
         description="Maximum files per component for analysis"
     )
+    enable_context_aware_analysis: bool = Field(
+        default=False,
+        description="Enable enhanced context-aware analysis with cross-file relationships"
+    )
+    max_context_files: int = Field(
+        default=10,
+        description="Maximum related files to include in context"
+    )
     
     # Logging
     log_level: str = Field(

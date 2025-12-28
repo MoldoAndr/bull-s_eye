@@ -13,7 +13,7 @@ from config import settings
 
 logger = structlog.get_logger()
 
-# File extensions for each language
+# Code file extensions for each language (ONLY files with executable logic)
 LANGUAGE_EXTENSIONS = {
     "python": {".py", ".pyx", ".pyi"},
     "javascript": {".js", ".jsx", ".mjs", ".cjs"},
@@ -26,9 +26,14 @@ LANGUAGE_EXTENSIONS = {
     "ruby": {".rb"},
     "php": {".php"},
     "shell": {".sh", ".bash", ".zsh"},
-    "yaml": {".yml", ".yaml"},
-    "json": {".json"},
-    "markdown": {".md", ".markdown"},
+}
+
+# Non-code file extensions (for documentation, config, data - EXCLUDE from LLM analysis)
+NON_CODE_EXTENSIONS = {
+    ".yaml", ".yml", ".json", ".md", ".markdown", ".txt", ".cfg", ".ini",
+    ".toml", ".xml", ".dockerfile", ".gitignore", ".env", ".log", ".sql",
+    ".css", ".scss", ".less", ".html", ".htm", ".svg", ".png", ".jpg", ".jpeg",
+    ".gif", ".ico", ".pdf", ".doc", ".docx", ".xls", ".xlsx"
 }
 
 # Inverse mapping: extension to language
@@ -179,6 +184,10 @@ class ComponentDetector:
                 file_path = Path(root) / filename
                 ext = file_path.suffix.lower()
                 
+                # Skip non-code files early for efficiency
+                if ext in NON_CODE_EXTENSIONS:
+                    continue
+                
                 if ext in EXTENSION_TO_LANGUAGE:
                     language = EXTENSION_TO_LANGUAGE[ext]
                     language_counts[language] += 1
@@ -269,6 +278,31 @@ class ComponentDetector:
     def get_files_for_component(self, component: Dict[str, Any]) -> List[Dict[str, Any]]:
         """Get list of files for a component."""
         return component.get("files", [])
+    
+    def should_analyze_with_llm(self, file_path: str) -> bool:
+        """Check if file should be analyzed by LLM (only executable code files)."""
+        file_ext = Path(file_path).suffix.lower()
+        
+        # Only analyze files with code extensions
+        if file_ext not in EXTENSION_TO_LANGUAGE:
+            return False
+        
+        # Additional filters for efficiency
+        file_name = Path(file_path).name.lower()
+        
+        # Skip test files for LLM analysis (they're not business logic)
+        if self._is_test_file(file_name):
+            return False
+        
+        # Skip very small files (likely boilerplate)
+        try:
+            content = self.get_file_content(file_path)
+            if content and len(content.strip()) < 100:
+                return False
+        except:
+            return False
+        
+        return True
     
     def get_file_content(self, file_path: str) -> Optional[str]:
         """Read file content."""

@@ -16,6 +16,7 @@ from config import settings
 from database import db
 from llm.ollama_client import OllamaCloudClient, get_ollama_client
 from .component_detector import ComponentDetector
+from .context_aware_analysis import ContextAwareAnalyzer
 from scanners import get_scanner_for_language, get_universal_scanners
 
 logger = structlog.get_logger()
@@ -406,30 +407,49 @@ class AnalysisEngine:
         detector: ComponentDetector,
         scanner_findings: List[Dict]
     ):
-        """Run LLM analysis on files and components (SEQUENTIAL - no parallel)."""
+        """Run LLM analysis on code files only (SEQUENTIAL - no parallel)."""
+        # Filter files for LLM analysis - ONLY executable code files
+        total_code_files = 0
         total_files = sum(len(c.get("files", [])) for c in components)
+        
+        for comp in components:
+            files = comp.get("files", [])
+            code_files = [f for f in files if detector.should_analyze_with_llm(f["path"])]
+            total_code_files += len(code_files)
+        
         analyzed_files = 0
+        skipped_files = total_files - total_code_files
+        
+        self.status.log_step(
+            f"LLM Analysis: Found {total_code_files} code files to analyze (skipping {skipped_files} docs/configs)"
+        )
         
         for comp_idx, comp in enumerate(components):
             comp_name = comp["name"]
             files = comp.get("files", [])
             
+            # Filter to only code files for LLM analysis
+            code_files = [f for f in files if detector.should_analyze_with_llm(f["path"])]
+            
+            if not code_files:
+                continue  # Skip components with no code files
+            
             self.status.update(
                 "analyzing",
                 f"Analyzing component: {comp_name}",
                 progress=50 + int((comp_idx / len(components)) * 35),
-                detail=f"Component {comp_idx+1}/{len(components)}, {len(files)} files"
+                detail=f"Component {comp_idx+1}/{len(components)}, {len(code_files)} code files"
             )
             
             file_summaries = []
             
-            # Analyze each file SEQUENTIALLY
-            for file_idx, file_info in enumerate(files):
+            # Analyze each code file SEQUENTIALLY
+            for file_idx, file_info in enumerate(code_files):
                 file_path = file_info["path"]
                 
                 self.status.log_step(
-                    f"Analyzing file: {file_path}",
-                    detail=f"File {analyzed_files+1}/{total_files}"
+                    f"Analyzing code file: {file_path}",
+                    detail=f"File {analyzed_files+1}/{total_code_files}"
                 )
                 
                 # Read file content

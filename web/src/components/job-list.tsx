@@ -8,16 +8,21 @@ import {
   Loader2,
   ExternalLink,
   AlertTriangle,
+  Square,
+  Trash2,
 } from "lucide-react";
 import { JobSummary } from "@/lib/api";
 import { formatDate, getStatusColor, cn } from "@/lib/utils";
+import { useState } from "react";
+import { api } from "@/lib/api";
 
 interface JobListProps {
   jobs: JobSummary[];
   loading?: boolean;
+  onJobUpdate?: () => void;
 }
 
-export function JobList({ jobs, loading }: JobListProps) {
+export function JobList({ jobs, loading, onJobUpdate }: JobListProps) {
   if (loading) {
     return (
       <div className="space-y-4">
@@ -54,13 +59,16 @@ export function JobList({ jobs, loading }: JobListProps) {
   return (
     <div className="space-y-4">
       {jobs.map((job) => (
-        <JobCard key={job.id} job={job} />
+        <JobCard key={job.id} job={job} onJobUpdate={onJobUpdate} />
       ))}
     </div>
   );
 }
 
-function JobCard({ job }: { job: JobSummary }) {
+function JobCard({ job, onJobUpdate }: { job: JobSummary; onJobUpdate?: () => void }) {
+  const [isStopping, setIsStopping] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+
   const isRunning = [
     "pending",
     "queued",
@@ -69,23 +77,60 @@ function JobCard({ job }: { job: JobSummary }) {
     "scanning",
     "analyzing",
     "generating_report",
-  ].includes(
-    job.status.toLowerCase()
-  );
+  ].includes(job.status.toLowerCase());
+
+  const isCompleted = job.status === "completed";
+  const isFailed = job.status === "failed";
+  const isCancelled = job.status === "cancelled";
 
   const StatusIcon = isRunning
     ? Loader2
-    : job.status === "completed"
+    : isCompleted
     ? CheckCircle
-    : job.status === "failed"
+    : isFailed || isCancelled
     ? XCircle
     : Clock;
 
   const totalFindings = job.findings_count.total;
-
   const criticalAndHigh = job.findings_count
     ? (job.findings_count.critical || 0) + (job.findings_count.high || 0)
     : 0;
+
+  const handleStop = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    if (!confirm("Are you sure you want to stop this job?")) return;
+    
+    setIsStopping(true);
+    try {
+      await api.stopJob(job.id);
+      onJobUpdate?.();
+    } catch (error) {
+      console.error("Failed to stop job:", error);
+      alert("Failed to stop job");
+    } finally {
+      setIsStopping(false);
+    }
+  };
+
+  const handleDelete = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    if (!confirm("Are you sure you want to delete this job? This action cannot be undone.")) return;
+    
+    setIsDeleting(true);
+    try {
+      await api.deleteJob(job.id);
+      onJobUpdate?.();
+    } catch (error: any) {
+      console.error("Failed to delete job:", error);
+      alert(error.response?.data?.detail || "Failed to delete job");
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   return (
     <Link href={`/jobs/${job.id}`}>
@@ -130,21 +175,47 @@ function JobCard({ job }: { job: JobSummary }) {
             )}
           </div>
 
-          {job.status === "completed" && (
-            <div className="flex items-center gap-4 ml-4">
-              <div className="text-right">
-                <div className="text-sm text-muted-foreground">Findings</div>
-                <div className="text-lg font-semibold">{totalFindings}</div>
-              </div>
-              {criticalAndHigh > 0 && (
-                <div className="flex items-center gap-1 text-orange-500">
-                  <AlertTriangle className="h-5 w-5" />
-                  <span className="font-semibold">{criticalAndHigh}</span>
+          <div className="flex items-center gap-2 ml-4">
+            {/* Action buttons */}
+            {isRunning && (
+              <button
+                onClick={handleStop}
+                disabled={isStopping}
+                className="p-2 rounded-md bg-orange-500/10 text-orange-500 hover:bg-orange-500/20 transition-colors disabled:opacity-50"
+                title="Stop job"
+              >
+                <Square className="h-4 w-4" />
+              </button>
+            )}
+            
+            {(isCompleted || isFailed || isCancelled) && (
+              <button
+                onClick={handleDelete}
+                disabled={isDeleting}
+                className="p-2 rounded-md bg-red-500/10 text-red-500 hover:bg-red-500/20 transition-colors disabled:opacity-50"
+                title="Delete job"
+              >
+                <Trash2 className="h-4 w-4" />
+              </button>
+            )}
+
+            {/* Job details */}
+            {isCompleted && (
+              <div className="flex items-center gap-4">
+                <div className="text-right">
+                  <div className="text-sm text-muted-foreground">Findings</div>
+                  <div className="text-lg font-semibold">{totalFindings}</div>
                 </div>
-              )}
-              <ExternalLink className="h-5 w-5 text-muted-foreground" />
-            </div>
-          )}
+                {criticalAndHigh > 0 && (
+                  <div className="flex items-center gap-1 text-orange-500">
+                    <AlertTriangle className="h-5 w-5" />
+                    <span className="font-semibold">{criticalAndHigh}</span>
+                  </div>
+                )}
+                <ExternalLink className="h-5 w-5 text-muted-foreground" />
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </Link>

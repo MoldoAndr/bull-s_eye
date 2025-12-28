@@ -232,6 +232,48 @@ async def get_job(job_id: str):
     return _format_job_status(job)
 
 
+@app.post("/api/jobs/{job_id}/stop", tags=["Jobs"])
+async def stop_job(job_id: str):
+    """Stop a running job."""
+    job = db.get_job(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+    
+    if job["status"] in ["completed", "failed", "cancelled"]:
+        raise HTTPException(status_code=400, detail="Job is not running")
+    
+    # Update job status to cancelled
+    db.update_job_status(
+        job_id=job_id,
+        status="cancelled",
+        message="Job stopped by user",
+        progress=job["progress"],
+        error="Job was cancelled by user"
+    )
+    
+    logger.info(f"Job {job_id} stopped by user")
+    
+    return {"message": "Job stopped successfully"}
+
+
+@app.delete("/api/jobs/{job_id}", tags=["Jobs"])
+async def delete_job(job_id: str):
+    """Delete a job and all its data."""
+    job = db.get_job(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+    
+    if job["status"] in ["pending", "cloning", "detecting_components", "scanning", "analyzing", "generating_report"]:
+        raise HTTPException(status_code=400, detail="Cannot delete running job. Stop it first.")
+    
+    # Delete job and all related data
+    db.delete_job(job_id)
+    
+    logger.info(f"Job {job_id} deleted by user")
+    
+    return {"message": "Job deleted successfully"}
+
+
 @app.get("/api/jobs/{job_id}/status", tags=["Jobs"])
 async def get_job_status_updates(
     job_id: str,

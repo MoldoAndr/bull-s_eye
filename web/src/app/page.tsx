@@ -89,7 +89,7 @@ export default function Home() {
               Analysis Jobs
             </h2>
           </div>
-          <JobList jobs={jobs || []} loading={jobsLoading} />
+          <JobList jobs={jobs || []} loading={jobsLoading} onJobUpdate={() => refetchJobs()} />
         </section>
       </main>
 
